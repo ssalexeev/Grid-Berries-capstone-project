@@ -1,97 +1,112 @@
-# GBerries - User Stories & System Requirements
+# Questions
 
-## Overview of Epics
-- **Epic 1:** Authentication & Access Control
-- **Epic 2:** Product & Service Catalog
-- **Epic 3:** Order Processing & Lifecycle
-- **Epic 4:** User Activity Metrics & Recommendations
-- **Epic 5:** AI-Powered Sales Analytics
-- **Epic 6:** Administration & System Moderation
+## What is the ApplicationContext?
+The ApplicationContext is the central IoC (Inversion of Control) container in Spring. 
+Instead of manually instantiating and managing objects, the ApplicationContext creates, 
+configures, and injects beans wherever dependencies are required. It holds bean definitions
+and manages their entire lifecycle (creation, initialization, and destruction) according to their defined scopes.
 
----
+## What are the tradeoffs of different approaches to injecting beans ?
 
-## Epic 1: Authentication & Access Control
+### Constructor Injection
+Constructor Injection is most preferred way of  bean injection.
+However, it can bring a cycle dependency, when a->b->c and c depends on a.
+Spring try to create beans when it needs, but in this situation spring doesn't understand what it should create in first way "a" or "c".
 
-### US1.1 - User Registration
-* **User Story:** As a prospective user, I want to register an account as either a **Buyer** or a **Seller**, so that I can access role-specific platform features.
-* **Key Functionality:** Account creation with role specification (`Buyer` or `Seller`).
+### Setter Injection
+The primary drawback of **setter injection** is that it prevents fields from being declared `final`,
+making objects mutable and compromising thread safety. It also creates a risk of `NullPointerExceptions` 
+because an object can exist in an incomplete, partially initialized state if a developer or test forgets 
+to invoke the setter before calling business methods. Additionally, setter injection makes unit testing more
+verbose by requiring multiple method calls after instantiation, and it masks bad class design by allowing dependencies 
+to grow excessively without triggering an obvious code smell like a bloated constructor signature would.
 
-### US1.2 - Secure Authentication (JWT)
-* **User Story:** As a registered user, I want to log in with my credentials to receive a JWT access and refresh token, so that my sessions are secure and authenticated across API requests.
-* **Key Functionality:** Credential validation, JWT token generation (Access & Refresh tokens).
+### Field injection
+The main issue with field injection is that it tightly couples your classes to the dependency injection framework 
+by relying on annotations directly on private fields. Because dependencies are set using reflection behind the scenes,
+you cannot declare fields as final, which loses immutability and thread safety. It also makes unit testing significantly 
+harder because you cannot easily pass mock objects through a constructor or setter—forcing you to either launch a full
+framework context or use reflection utilities to populate private variables. Additionally, field injection hides design flaws,
+making it far too easy to accumulate dozens of unnoticeable dependencies and violate the Single Responsibility Principle without 
+realizing the class has become bloated.
 
-### US1.3 - Seller Profile Management
-* **User Story:** As a Seller, I want to update my store profile (business name, description, contact information), so that buyers can identify my brand.
-* **Key Functionality:** Updating store details and contact metadata.
+Field injection is widely considered an anti-pattern in modern development and should generally be avoided outside of quick prototypes or test classes.
 
----
+## Why do we need to use @Qualifier when multiple of the same type are defined ?
+We need @Qualifier because Spring resolves dependencies primarily by type. 
+When multiple beans of the same type exist in the context, 
+Spring cannot determine which one to inject on its own and throws a NoUniqueBeanDefinitionException.
+Adding @Qualifier("beanName") specifies the exact bean name or qualifier ID to inject, eliminating the ambiguity.
 
-## Epic 2: Product & Service Catalog
+## How to avoid loading of heavy beans (like caches or other beans with heavy init logic) on startup and decrease startup time?
+Set up @Lazy annotation on heavy beans initialization.
 
-### US2.1 - Product/Service Listing Management (CRUD)
-* **User Story:** As a Seller, I want to create, update, view, and delete my product cards (including title, description, price, available stock quantity, categories, and image URLs), so that I can manage my inventory.
-* **Key Functionality:** Complete CRUD operations for inventory product listings.
+## What are Spring lifecycle stages and methods?
+### Spring Bean Lifecycle Stages & Methods
 
-### US2.2 - Catalog Search & Filtering
-* **User Story:** As a Buyer, I want to search for products/services by keyword and filter them by category, price range, and availability, so that I can quickly find items I want to buy.
-* **Key Functionality:** Full-text search and multi-criteria filtering.
-
-### US2.3 - Product Detail View
-* **User Story:** As a Buyer, I want to open a product card to view its full details, stock level, and category tags, so that I can make an informed purchasing decision.
-* **Key Functionality:** Product detail page rendering with real-time stock levels.
-
-### US2.4 - Put Product In Cart
-* **User Story:** As a Buyer, I want to add products to my cart, delete items from my cart, and update quantity parameters, so that I can prepare an order.
-* **Key Functionality:** Shopping cart management (Add, Remove, Update Quantity).
-
----
-
-## Epic 3: Order Processing & Lifecycle
-
-### US3.1 - Order Placement
-* **User Story:** As a Buyer, I want to place an order for one or more items, so that the system reserves stock and creates a new order in `Created` status.
-* **Key Functionality:** Order initialization, stock reservation, status transition to `Created`.
-
-### US3.2 - Order Status Management
-* **User Story:** As a Seller, I want to view all incoming orders containing my products and transition their status (`Created` → `In Processing` → `Shipped` → `Completed` / `Cancelled`), so that I can fulfill orders effectively.
-* **Key Functionality:** Order fulfillment tracking and status state transitions.
-
-### US3.3 - Order Tracking
-* **User Story:** As a Buyer, I want to view my order history and current order status, so that I can track my purchases in real time.
-* **Key Functionality:** Order history listing and status tracking.
+The lifecycle of a Spring Bean spans four primary phases: **Instantiation**, **Populate Properties**, **Initialization**, and **Destruction**.
 
 ---
 
-## Epic 4: User Activity Metrics & Recommendations
+#### Lifecycle Flow
 
-### US4.1 - Event Metric Tracking
-* **User Story:** As the System, I want to automatically record user interaction events (`VIEW`, `SEARCH`, `ADD_TO_CART`, `PURCHASE`), so that customer behavior data can be aggregated for analytics and recommendations.
-* **Key Functionality:** Automated event logging and telemetry collection.
+```text
+  1. Instantiation  ──►  2. Populate Properties  ──►  3. Aware Interfaces
+                                                             │
+  5. Destruction   ◄──   4. Ready for Use    ◄──  Initialization
+```
+```java
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 
-### US4.2 - Personalized Recommendations
-* **User Story:** As a Buyer, I want to see a "Recommended for You" feed on the storefront, so that I can discover products matched to my viewing and purchasing history.
-* **Key Functionality:** Personalized product feed generation based on tracked user events (includes `US4.1`).
+public class DatabaseConnectionBean implements InitializingBean, DisposableBean {
 
----
+    public DatabaseConnectionBean() {
+        System.out.println("1. Instantiation: Constructor called");
+    }
 
-## Epic 5: AI-Powered Sales Analytics
+    // --- Initialization Methods ---
 
-### US5.1 - Sales Metrics Aggregation
-* **User Story:** As a Seller, I want to view a dashboard displaying revenue, unit sales, conversion rates (views to purchases), and order cancellation rates over a selected date range.
-* **Key Functionality:** Aggregated analytics dashboard (revenue, units sold, conversion rate, cancellation rate).
+    @PostConstruct
+    public void postConstruct() {
+        System.out.println("4a. Initialization: @PostConstruct executed");
+    }
 
-### US5.2 - AI Sales Insights & Recommendations
-* **User Story:** As a Seller, I want to request an AI-generated analysis of my store metrics, so that I can receive actionable recommendations on pricing adjustments, inventory restocks, and underperforming products.
-* **Key Functionality:** LLM-based store metric analysis (includes `US5.1`).
+    @Override
+    public void afterPropertiesSet() {
+        System.out.println("4b. Initialization: InitializingBean.afterPropertiesSet executed");
+    }
 
----
+    public void customInit() {
+        System.out.println("4c. Initialization: Custom init-method executed");
+    }
 
-## Epic 6: Administration & System Moderation
+    // --- Destruction Methods ---
 
-### US6.1 - Category Tree Management
-* **User Story:** As an Admin, I want to create, update, and organize product and service categories, so that the catalog maintains a clean hierarchy.
-* **Key Functionality:** Category hierarchy and tree structure management.
+    @PreDestroy
+    public void preDestroy() {
+        System.out.println("6a. Destruction: @PreDestroy executed");
+    }
 
-### US6.2 - Seller & Product Moderation
-* **User Story:** As an Admin, I want to review, approve, or suspend product listings and seller accounts, so that the platform complies with quality and safety standards.
-* **Key Functionality:** Moderation workflow for accounts and product listings (Approve, Suspend, Review).
+    @Override
+    public void destroy() {
+        System.out.println("6b. Destruction: DisposableBean.destroy executed");
+    }
+
+    public void customDestroy() {
+        System.out.println("6c. Destruction: Custom destroy-method executed");
+    }
+}
+```
+
+## How can we customize the component scanning process ?
+
+We can customize the component scanning process using five primary methods in `@ComponentScan`:
+
+1. `basePackages` / `basePackageClasses`: Specify target packages or type-safe marker classes to scan.
+2. `includeFilters` & `excludeFilters`: Whitelist or blacklist components using annotations, regex, class types (`ASSIGNABLE_TYPE`), or AspectJ expressions.
+3. `useDefaultFilters = false`: Disable default automatic scanning for standard stereotypes (`@Component`, `@Service`, `@Repository`, `@Controller`).
+4. Custom `TypeFilter`: Implement Spring’s `TypeFilter` interface to write custom programmatic matching rules based on class metadata.
+5. `ClassPathBeanDefinitionScanner`: Programmatically trigger and configure scanning logic at runtime.
