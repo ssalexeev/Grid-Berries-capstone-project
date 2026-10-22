@@ -3,6 +3,7 @@ package org.capstone.repository.jdbc.util;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.capstone.config.database.DBProperties;
+import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+@Repository
 public class JdbcUtil {
 
     private static  String url = DBProperties.URL;
