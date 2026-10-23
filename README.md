@@ -1,112 +1,31 @@
-# Questions
 
-## What is the ApplicationContext?
-The ApplicationContext is the central IoC (Inversion of Control) container in Spring. 
-Instead of manually instantiating and managing objects, the ApplicationContext creates, 
-configures, and injects beans wherever dependencies are required. It holds bean definitions
-and manages their entire lifecycle (creation, initialization, and destruction) according to their defined scopes.
+# What is the difference between the @Configuration,@Component and @Service annotations ?
 
-## What are the tradeoffs of different approaches to injecting beans ?
+## @Confugiration
+@Configuration indicates that a class contains factory methods annotated with @Bean to instantiate and configure Spring beans.
 
-### Constructor Injection
-Constructor Injection is most preferred way of  bean injection.
-However, it can bring a cycle dependency, when a->b->c and c depends on a.
-Spring try to create beans when it needs, but in this situation spring doesn't understand what it should create in first way "a" or "c".
+## @Component
+@Component annotation allows to register Bean of the class which has this annotation in SpringContext
 
-### Setter Injection
-The primary drawback of **setter injection** is that it prevents fields from being declared `final`,
-making objects mutable and compromising thread safety. It also creates a risk of `NullPointerExceptions` 
-because an object can exist in an incomplete, partially initialized state if a developer or test forgets 
-to invoke the setter before calling business methods. Additionally, setter injection makes unit testing more
-verbose by requiring multiple method calls after instantiation, and it masks bad class design by allowing dependencies 
-to grow excessively without triggering an obvious code smell like a bloated constructor signature would.
+## @Service
+@Service has same point as @Component, but add more specific information about Bean, which is "service" business-tag
 
-### Field injection
-The main issue with field injection is that it tightly couples your classes to the dependency injection framework 
-by relying on annotations directly on private fields. Because dependencies are set using reflection behind the scenes,
-you cannot declare fields as final, which loses immutability and thread safety. It also makes unit testing significantly 
-harder because you cannot easily pass mock objects through a constructor or setter—forcing you to either launch a full
-framework context or use reflection utilities to populate private variables. Additionally, field injection hides design flaws,
-making it far too easy to accumulate dozens of unnoticeable dependencies and violate the Single Responsibility Principle without 
-realizing the class has become bloated.
+# What value will a property have if it is defined in two different profiles both of which are active ?
+When a property key is defined in multiple active Spring profiles,
+the value defined in the last activated profile in the declaration sequence takes precedence and wins.
 
-Field injection is widely considered an anti-pattern in modern development and should generally be avoided outside of quick prototypes or test classes.
+# Why would we use factory beans instead of regular beans ?
+1. Encapsulate Complex Instantiation: Ideal when creating an object requires extensive setup, complex builder patterns, or external library initializations that would clutter configuration classes.
+2. Third-Party Library Integration: Useful for integrating non-Spring frameworks or legacy code into the Spring context (e.g., creating ORM sessions, connection pools, or RPC proxies like ProxyFactoryBean).
+3. Dynamic / Runtime Bean Construction: Allows you to decide the exact concrete class or proxy to construct dynamically at runtime based on environment parameters or custom logic.
 
-## Why do we need to use @Qualifier when multiple of the same type are defined ?
-We need @Qualifier because Spring resolves dependencies primarily by type. 
-When multiple beans of the same type exist in the context, 
-Spring cannot determine which one to inject on its own and throws a NoUniqueBeanDefinitionException.
-Adding @Qualifier("beanName") specifies the exact bean name or qualifier ID to inject, eliminating the ambiguity.
+# How can we override any property defined in any .properties file ?
+We can override autoconfigured properties by defining an explicit @Bean method in a configuration class. 
+For example, if Spring Boot automatically configures a default DataSource using the spring.datasource.* properties 
+from application.properties, we can declare our own @Bean method returning a DataSource.
+When Spring detects our custom @Bean definition, it overrides the default autoconfigured bean and uses our custom instance instead.
 
-## How to avoid loading of heavy beans (like caches or other beans with heavy init logic) on startup and decrease startup time?
-Set up @Lazy annotation on heavy beans initialization.
-
-## What are Spring lifecycle stages and methods?
-### Spring Bean Lifecycle Stages & Methods
-
-The lifecycle of a Spring Bean spans four primary phases: **Instantiation**, **Populate Properties**, **Initialization**, and **Destruction**.
-
----
-
-#### Lifecycle Flow
-
-```text
-  1. Instantiation  ──►  2. Populate Properties  ──►  3. Aware Interfaces
-                                                             │
-  5. Destruction   ◄──   4. Ready for Use    ◄──  Initialization
-```
-```java
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
-
-public class DatabaseConnectionBean implements InitializingBean, DisposableBean {
-
-    public DatabaseConnectionBean() {
-        System.out.println("1. Instantiation: Constructor called");
-    }
-
-    // --- Initialization Methods ---
-
-    @PostConstruct
-    public void postConstruct() {
-        System.out.println("4a. Initialization: @PostConstruct executed");
-    }
-
-    @Override
-    public void afterPropertiesSet() {
-        System.out.println("4b. Initialization: InitializingBean.afterPropertiesSet executed");
-    }
-
-    public void customInit() {
-        System.out.println("4c. Initialization: Custom init-method executed");
-    }
-
-    // --- Destruction Methods ---
-
-    @PreDestroy
-    public void preDestroy() {
-        System.out.println("6a. Destruction: @PreDestroy executed");
-    }
-
-    @Override
-    public void destroy() {
-        System.out.println("6b. Destruction: DisposableBean.destroy executed");
-    }
-
-    public void customDestroy() {
-        System.out.println("6c. Destruction: Custom destroy-method executed");
-    }
-}
-```
-
-## How can we customize the component scanning process ?
-
-We can customize the component scanning process using five primary methods in `@ComponentScan`:
-
-1. `basePackages` / `basePackageClasses`: Specify target packages or type-safe marker classes to scan.
-2. `includeFilters` & `excludeFilters`: Whitelist or blacklist components using annotations, regex, class types (`ASSIGNABLE_TYPE`), or AspectJ expressions.
-3. `useDefaultFilters = false`: Disable default automatic scanning for standard stereotypes (`@Component`, `@Service`, `@Repository`, `@Controller`).
-4. Custom `TypeFilter`: Implement Spring’s `TypeFilter` interface to write custom programmatic matching rules based on class metadata.
-5. `ClassPathBeanDefinitionScanner`: Programmatically trigger and configure scanning logic at runtime.
+# Does PostDestruct get called for a prototype scope bean ?
+No, Spring does not call the @PreDestroy (or @PostConstruct's counterpart @PreDestroy) callback method for prototype-scoped beans.
+Spring manages the complete lifecycle of singleton beans, including their destruction. However, for prototype beans, Spring only handles instantiation, configuration, and initialization.
+Once the prototype bean is created and handed over to the client code, Spring drops its reference to the instance to prevent memory leaks and no longer manages its lifecycle.
