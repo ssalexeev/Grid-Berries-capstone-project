@@ -1,0 +1,5 @@
+datasource:
+  url: ${DATABASE_URL}
+  username: ${DATABASE_USER}
+  password: ${DATABASE_PASSWORD}
+  driver: ${DATABASE_DRIVER}
