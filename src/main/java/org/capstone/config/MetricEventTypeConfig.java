@@ -1,4 +1,4 @@
-package org.capstone;
+package org.capstone.config;
 
 
 import org.springframework.beans.factory.annotation.Value;

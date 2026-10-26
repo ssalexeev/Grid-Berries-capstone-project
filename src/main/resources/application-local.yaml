@@ -17,3 +17,5 @@ time:
   iso-time: "14:30:00"
   custom-date: 26/10/2026
 
+# It is way to debug autoconfiguration on application startup
+debug: true

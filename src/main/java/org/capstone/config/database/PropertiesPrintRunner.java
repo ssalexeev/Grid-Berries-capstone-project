@@ -19,8 +19,8 @@ public class PropertiesPrintRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        printAllBeans();
-        printAllProperties();
+        //printAllBeans();
+        //printAllProperties();
     }
 
     public void printAllBeans() {
