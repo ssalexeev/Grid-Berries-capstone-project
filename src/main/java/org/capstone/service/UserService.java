@@ -2,7 +2,7 @@ package org.capstone.service;
 
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.UserRepository;
+import org.capstone.repository.jdbc.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,13 +76,13 @@ public class UserService {
         }
         getUserById(user.getId());
 
-        return userRepository.update(user);
+        return userRepository.save(user);
     }
 
     public void deactivateUser(Long id) {
         User user = getUserById(id);
         user.setIsActive(false);
-        userRepository.update(user);
+        userRepository.save(user);
     }
 
     public void deleteUser(Long id) {

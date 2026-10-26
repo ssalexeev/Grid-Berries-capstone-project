@@ -5,20 +5,22 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class SellerProfile {
     private Long id;
+
     private String storeName;
-    private String description;
+
+    private String storeDescription;
+
     private String contactInfo;
 
-    // Association: Belongs to 1 User
     private User user;
 
-    public void updateProfile() {
-        // Implementation logic for updating profile
-    }
+    private LocalDateTime createdAt;
 }

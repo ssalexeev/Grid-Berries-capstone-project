@@ -1,0 +1,13 @@
+datasource:
+  url: jdbc:postgresql://localhost:5432/mydatabase
+  username: myuser
+  password: mypassword
+  driver: org.postgresql.Driver
+
+metrics:
+  event:
+    type: view-search-add_to_card-purchase
+
+time:
+    timeInDefaultUnit: 10
+    timeInNano: 9ns

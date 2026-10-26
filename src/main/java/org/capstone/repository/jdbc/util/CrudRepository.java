@@ -1,4 +1,4 @@
-package org.capstone.repository;
+package org.capstone.repository.jdbc.util;
 
 import java.util.Optional;
 
@@ -7,7 +7,7 @@ public interface CrudRepository<T, ID> {
 
     Iterable<T> findAll();
 
-    <S extends T> T save(S entity);
+    T save(T entity);
 
     void delete(T entity);
 

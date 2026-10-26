@@ -1,71 +1,79 @@
 package org.capstone.repository.jdbc;
 
+import org.capstone.repository.jdbc.util.JdbcUtil;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import org.capstone.domain.User;
+import org.capstone.domain.enums.Role;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Testcontainers
 class JdbcUtilTest {
 
-    // MODE=PostgreSQL enables compatibility for Postgre-style SQL syntax in H2
-    private static final String H2_URL = "jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:schema.sql'";
-    private static final String H2_USER = "sa";
-    private static final String H2_PASSWORD = "";
+    @Container
+    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine")
+            .withInitScript("db/changelog/changes/v1__init_schema.sql");
 
     private JdbcUtil jdbcUtil;
 
-    // Record mapping the users table schema
-    public record User(
-            int id,
-            String email,
-            String passwordHash,
-            String role,
-            boolean isActive,
-            Timestamp createdAt
-    ) {}
-
     @BeforeAll
     static void setupDatabase() {
-        JdbcUtil.setCredentials(H2_URL, H2_USER, H2_PASSWORD);
+        JdbcUtil.setCredentials(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+    }
+
+    @AfterAll
+    static void resetCredentials() {
+        JdbcUtil.setCredentials(
+                "jdbc:postgresql://localhost:5432/mydatabase",
+                "myuser",
+                "mypassword"
+        );
     }
 
     @BeforeEach
     void setUp() {
         jdbcUtil = new JdbcUtil();
 
-        jdbcUtil.execute("DELETE FROM users");
+        jdbcUtil.execute("TRUNCATE TABLE \"user\" RESTART IDENTITY CASCADE");
 
-        // Reset and re-seed user data before each test
         jdbcUtil.execute("""
-            INSERT INTO users (id, email, password_hash, role, is_active) VALUES 
-            (1, 'john.doe@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7a', 'buyer', true),
-            (2, 'jane.smith@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7b', 'seller', true),
-            (3, 'tech.vendor@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7c', 'seller', true),
-            (4, 'admin@marketplace.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7d', 'admin', true),
-            (5, 'inactive.user@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7e', 'buyer', false);
-        """);
+                    INSERT INTO "user" (email, password_hash, role, is_active) VALUES
+                    ('john.doe@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7a', 'buyer', true),
+                    ('jane.smith@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7b', 'seller', true),
+                    ('tech.vendor@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7c', 'seller', true),
+                    ('admin@marketplace.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7d', 'admin', true),
+                    ('inactive.user@example.com', '$2a$12$eImiTXuWVxfM37uY4JANjO.Gk4A4L4dE2f1Gz6h1.g98j4X5Y6Z7e', 'buyer', false);
+                """);
     }
 
-    // Helper ResultSet mapper
     private User mapUser(ResultSet rs) {
         try {
-            return new User(
-                    rs.getInt("id"),
-                    rs.getString("email"),
-                    rs.getString("password_hash"),
-                    rs.getString("role"),
-                    rs.getBoolean("is_active"),
-                    rs.getTimestamp("created_at")
-            );
+            return User.builder()
+                    .id(rs.getLong("id"))
+                    .email(rs.getString("email"))
+                    .passwordHash(rs.getString("password_hash"))
+                    .role(Role.valueOf(rs.getString("role").toUpperCase()))
+                    .isActive(rs.getBoolean("is_active"))
+                    .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
+                    .build();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to map User record", e);
         }
@@ -79,22 +87,22 @@ class JdbcUtilTest {
         @DisplayName("Positive: Find single active user by email")
         void findOne_Success() {
             Optional<User> user = jdbcUtil.findOne(
-                    "SELECT * FROM users WHERE email = ?",
+                    "SELECT * FROM \"user\" WHERE email = ?",
                     JdbcUtilTest.this::mapUser,
                     "admin@marketplace.com"
             );
 
             assertTrue(user.isPresent());
-            assertEquals(4, user.get().id());
-            assertEquals("admin", user.get().role());
-            assertTrue(user.get().isActive());
+            assertEquals(4L, user.get().getId());
+            assertEquals(Role.ADMIN, user.get().getRole());
+            assertTrue(user.get().getIsActive());
         }
 
         @Test
         @DisplayName("Positive: Should return Optional.empty when email does not exist")
         void findOne_NotFound() {
             Optional<User> user = jdbcUtil.findOne(
-                    "SELECT * FROM users WHERE email = ?",
+                    "SELECT * FROM \"user\" WHERE email = ?",
                     JdbcUtilTest.this::mapUser,
                     "nonexistent@example.com"
             );
@@ -106,7 +114,7 @@ class JdbcUtilTest {
         @DisplayName("Negative: Throw IllegalStateException cause when query matches multiple rows")
         void findOne_MultipleResults_ThrowsException() {
             IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                    jdbcUtil.findOne("SELECT * FROM users WHERE role = ?", JdbcUtilTest.this::mapUser, "seller")
+                    jdbcUtil.findOne("SELECT * FROM \"user\" WHERE role = ?", JdbcUtilTest.this::mapUser, "seller")
             );
 
             assertTrue(exception.getMessage().contains("Query returned more than 1 result"));
@@ -121,34 +129,34 @@ class JdbcUtilTest {
         @DisplayName("Positive: Return all active buyers")
         void findMany_Filtered() {
             List<User> buyers = jdbcUtil.findMany(
-                    "SELECT * FROM users WHERE role = ? AND is_active = ?",
+                    "SELECT * FROM \"user\" WHERE role = ? AND is_active = ?",
                     JdbcUtilTest.this::mapUser,
                     "buyer",
                     true
             );
 
             assertEquals(1, buyers.size());
-            assertEquals("john.doe@example.com", buyers.get(0).email());
+            assertEquals("john.doe@example.com", buyers.get(0).getEmail());
         }
 
         @Test
         @DisplayName("Positive: Fetch all records ordered by ID")
         void findMany_AllUsers() {
             List<User> users = jdbcUtil.findMany(
-                    "SELECT * FROM users ORDER BY id ASC",
+                    "SELECT * FROM \"user\" ORDER BY id ASC",
                     JdbcUtilTest.this::mapUser
             );
 
             assertEquals(5, users.size());
-            assertEquals("john.doe@example.com", users.get(0).email());
-            assertFalse(users.get(4).isActive()); // inactive.user@example.com
+            assertEquals("john.doe@example.com", users.get(0).getEmail());
+            assertFalse(users.get(4).getIsActive()); // inactive.user@example.com
         }
 
         @Test
         @DisplayName("Positive: Return empty list when condition matches no rows")
         void findMany_NoMatches() {
             List<User> superusers = jdbcUtil.findMany(
-                    "SELECT * FROM users WHERE role = ?",
+                    "SELECT * FROM \"user\" WHERE role = ?",
                     JdbcUtilTest.this::mapUser,
                     "superuser"
             );
@@ -166,41 +174,41 @@ class JdbcUtilTest {
         @DisplayName("Positive: Insert a new user record")
         void execute_InsertUser() {
             jdbcUtil.execute(
-                    "INSERT INTO users (email, password_hash, role, is_active) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO \"user\" (email, password_hash, role, is_active) VALUES (?, ?, ?, ?)",
                     "new.buyer@example.com", "$2a$12$hash", "buyer", true
             );
 
             Optional<User> user = jdbcUtil.findOne(
-                    "SELECT * FROM users WHERE email = ?",
+                    "SELECT * FROM \"user\" WHERE email = ?",
                     JdbcUtilTest.this::mapUser,
                     "new.buyer@example.com"
             );
 
             assertTrue(user.isPresent());
-            assertEquals("buyer", user.get().role());
+            assertEquals(Role.BUYER, user.get().getRole());
         }
 
         @Test
         @DisplayName("Positive: Deactivate user by updating is_active flag")
         void execute_UpdateUser() {
-            jdbcUtil.execute("UPDATE users SET is_active = ? WHERE email = ?", false, "john.doe@example.com");
+            jdbcUtil.execute("UPDATE \"user\" SET is_active = ? WHERE email = ?", false, "john.doe@example.com");
 
             Optional<User> user = jdbcUtil.findOne(
-                    "SELECT * FROM users WHERE email = ?",
+                    "SELECT * FROM \"user\" WHERE email = ?",
                     JdbcUtilTest.this::mapUser,
                     "john.doe@example.com"
             );
 
             assertTrue(user.isPresent());
-            assertFalse(user.get().isActive());
+            assertFalse(user.get().getIsActive());
         }
 
         @Test
         @DisplayName("Positive: Delete inactive user account")
         void execute_DeleteUser() {
-            jdbcUtil.execute("DELETE FROM users WHERE is_active = ?", false);
+            jdbcUtil.execute("DELETE FROM \"user\" WHERE is_active = ?", false);
 
-            List<User> remaining = jdbcUtil.findMany("SELECT * FROM users", JdbcUtilTest.this::mapUser);
+            List<User> remaining = jdbcUtil.findMany("SELECT * FROM \"user\"", JdbcUtilTest.this::mapUser);
             assertEquals(4, remaining.size());
         }
 
@@ -209,7 +217,8 @@ class JdbcUtilTest {
         void execute_DuplicateEmail_ThrowsException() {
             assertThrows(RuntimeException.class, () ->
                     jdbcUtil.execute(
-                            "INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)",
+                            """
+                                    INSERT INTO "user" (email, password_hash, role) VALUES (?, ?, ?)""",
                             "john.doe@example.com", "$2a$12$hash", "buyer"
                     )
             );
@@ -224,7 +233,9 @@ class JdbcUtilTest {
         @DisplayName("Positive: Insert user using Consumer parameter setting")
         void execute_ConsumerBinding() {
             jdbcUtil.execute(
-                    "INSERT INTO users (email, password_hash, role, is_active) VALUES (?, ?, ?, ?)",
+                    """
+                             INSERT INTO "user" (email, password_hash, role, is_active) VALUES (?, ?, ?, ?)
+                            """,
                     stmt -> {
                         try {
                             stmt.setString(1, "consumer.user@example.com");
@@ -238,13 +249,14 @@ class JdbcUtilTest {
             );
 
             Optional<User> user = jdbcUtil.findOne(
-                    "SELECT * FROM users WHERE email = ?",
+                    """
+                            SELECT * FROM "user" WHERE email = ?""",
                     JdbcUtilTest.this::mapUser,
                     "consumer.user@example.com"
             );
 
             assertTrue(user.isPresent());
-            assertEquals("seller", user.get().role());
+            assertEquals(Role.SELLER, user.get().getRole());
         }
     }
 }

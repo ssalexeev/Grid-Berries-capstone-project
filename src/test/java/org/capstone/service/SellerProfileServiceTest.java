@@ -3,7 +3,7 @@ package org.capstone.service;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.SellerProfileRepository;
+import org.capstone.repository.jdbc.SellerProfileRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,9 +33,6 @@ class SellerProfileServiceTest {
     @InjectMocks
     private SellerProfileService sellerProfileService;
 
-    // ==========================================
-    // createProfile Tests
-    // ==========================================
     @Nested
     class CreateProfileTests {
 
@@ -105,8 +102,16 @@ class SellerProfileServiceTest {
 
         @Test
         void createProfile_WhenProfileAlreadyExistsForUser_ThrowsIllegalStateException() {
-            User validSeller = User.builder().id(1L).role(Role.SELLER).isActive(true).build();
-            SellerProfile existingProfile = SellerProfile.builder().id(100L).user(validSeller).build();
+            User validSeller = User.builder()
+                    .id(1L)
+                    .role(Role.SELLER)
+                    .isActive(true)
+                    .build();
+
+            SellerProfile existingProfile = SellerProfile.builder()
+                    .id(100L)
+                    .user(validSeller)
+                    .build();
 
             when(sellerRepository.findByUserId(1L)).thenReturn(Optional.of(existingProfile));
 
@@ -122,7 +127,11 @@ class SellerProfileServiceTest {
 
         @Test
         void createProfile_WhenValidInputs_SavesAndReturnsProfile() {
-            User validSeller = User.builder().id(1L).role(Role.SELLER).isActive(true).build();
+            User validSeller = User.builder()
+                    .id(1L)
+                    .role(Role.SELLER)
+                    .isActive(true)
+                    .build();
 
             when(sellerRepository.findByUserId(1L)).thenReturn(Optional.empty());
             when(sellerRepository.save(any(SellerProfile.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -131,7 +140,7 @@ class SellerProfileServiceTest {
 
             assertNotNull(result);
             assertEquals("Tech Store", result.getStoreName());
-            assertEquals("Best tech", result.getDescription());
+            assertEquals("Best tech", result.getStoreDescription());
             assertEquals("tech@store.com", result.getContactInfo());
             assertEquals(validSeller, result.getUser());
 
@@ -182,7 +191,10 @@ class SellerProfileServiceTest {
         @Test
         void getProfileByUserId_WhenFound_ReturnsProfile() {
             Long userId = 5L;
-            SellerProfile profile = SellerProfile.builder().id(200L).build();
+            SellerProfile profile = SellerProfile.builder()
+                    .id(200L)
+                    .user(User.builder().id(userId).build())
+                    .build();
 
             when(sellerRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
 
@@ -224,19 +236,19 @@ class SellerProfileServiceTest {
             SellerProfile existingProfile = SellerProfile.builder()
                     .id(profileId)
                     .storeName("Old Store")
-                    .description("Old Desc")
+                    .storeDescription("Old Desc")
                     .contactInfo("old@contact.com")
                     .build();
 
             when(sellerRepository.findById(profileId)).thenReturn(Optional.of(existingProfile));
-            when(sellerRepository.update(existingProfile)).thenReturn(existingProfile);
+            when(sellerRepository.save(existingProfile)).thenReturn(existingProfile);
 
             SellerProfile result = sellerProfileService.updateProfile(profileId, "New Store", "New Desc", "new@contact.com");
 
             assertEquals("New Store", result.getStoreName());
-            assertEquals("New Desc", result.getDescription());
+            assertEquals("New Desc", result.getStoreDescription());
             assertEquals("new@contact.com", result.getContactInfo());
-            verify(sellerRepository, times(1)).update(existingProfile);
+            verify(sellerRepository, times(1)).save(existingProfile);
         }
 
         @Test
@@ -245,18 +257,18 @@ class SellerProfileServiceTest {
             SellerProfile existingProfile = SellerProfile.builder()
                     .id(profileId)
                     .storeName("Keep Old Store")
-                    .description("Old Desc")
+                    .storeDescription("Old Desc")
                     .contactInfo("old@contact.com")
                     .build();
 
             when(sellerRepository.findById(profileId)).thenReturn(Optional.of(existingProfile));
-            when(sellerRepository.update(existingProfile)).thenReturn(existingProfile);
+            when(sellerRepository.save(existingProfile)).thenReturn(existingProfile);
 
             // Pass blank storeName, non-null desc/contact
             SellerProfile result = sellerProfileService.updateProfile(profileId, "   ", "New Desc", "new@contact.com");
 
             assertEquals("Keep Old Store", result.getStoreName()); // Preserved
-            assertEquals("New Desc", result.getDescription());
+            assertEquals("New Desc", result.getStoreDescription());
             assertEquals("new@contact.com", result.getContactInfo());
         }
 
@@ -269,7 +281,7 @@ class SellerProfileServiceTest {
                     () -> sellerProfileService.updateProfile(500L, "Store", "Desc", "Contact")
             );
 
-            verify(sellerRepository, never()).update(any());
+            verify(sellerRepository, never()).save(any());
         }
     }
 

@@ -1,0 +1,6 @@
+ALTER TABLE product
+    ADD COLUMN IF NOT EXISTS status varchar(50) DEFAULT 'PENDING_MODERATION';
+
+ALTER TABLE user_metric_event
+    ADD COLUMN IF NOT EXISTS product_id int REFERENCES product(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS order_item_id int REFERENCES order_item(id) ON DELETE SET NULL;

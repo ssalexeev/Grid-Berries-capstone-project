@@ -19,6 +19,5 @@ public class SalesAnalyticsReport {
     private String aiInsightsText;
     private LocalDateTime createdAt;
 
-    // Relationship: Generated for a SellerProfile
-    private SellerProfile sellerProfile;
+    private Product product;
 }
