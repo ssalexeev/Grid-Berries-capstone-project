@@ -3,3 +3,17 @@ datasource:
   username: local_user
   password: localpass
   driver: org.h2.Driver
+
+metrics:
+  event:
+    type: view-search-addToCard-purchase
+
+time:
+  timeInDefaultUnit: 10
+  timeInNano: 9ns
+
+  iso-date: 2026-10-26
+  iso-date-time: 2026-10-26T14:30:00
+  iso-time: "14:30:00"
+  custom-date: 26/10/2026
+
