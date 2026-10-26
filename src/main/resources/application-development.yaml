@@ -3,3 +3,7 @@ datasource:
   username: myuser
   password: mypassword
   driver: org.postgresql.Driver
+
+metrics:
+  event:
+    type: view-search-add_to_card-purchase
