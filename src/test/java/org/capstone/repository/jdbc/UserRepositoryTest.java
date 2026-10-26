@@ -1,32 +1,59 @@
-package org.capstone.repository;
+package org.capstone.repository.jdbc;
 
 
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.LocalDateTime;
 
-
+@Testcontainers
 class UserRepositoryTest {
-
     private UserRepository repository;
+
+    @Container
+    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine")
+            .withInitScript("db/changelog/changes/v1__init_schema.sql");
+
+
+    @BeforeAll
+    static void setupDatabase() {
+        JdbcUtil.setCredentials(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+    }
+
+    @AfterAll
+    static void resetCredentials() {
+        JdbcUtil.setCredentials(
+                "jdbc:postgresql://localhost:5432/mydatabase",
+                "myuser",
+                "mypassword"
+        );
+    }
 
     @BeforeEach
     void setUp() {
-        repository = new UserRepository();
+        JdbcUtil jdbcUtil = new JdbcUtil();
+        repository = new UserRepository(jdbcUtil);
+        jdbcUtil.execute("TRUNCATE TABLE \"user\" RESTART IDENTITY CASCADE");
     }
 
-    // ==========================================
-    // findById Tests
-    // ==========================================
+
     @Nested
     class FindByIdTests {
 
@@ -71,24 +98,24 @@ class UserRepositoryTest {
     class FindByEmailTests {
 
         @Test
-        void findByEmail_WhenEmailIsNullOrEmptyOrBlank_ReturnsEmptyOptional() {
-            String invalidEmail = ";ffd";
-            Optional<User> result = repository.findByEmail(invalidEmail);
+        void findByEmail_WhenEmailDoesNotExist_ReturnsEmptyOptional() {
+            Optional<User> result = repository.findByEmail("notfound@example.com");
 
             assertTrue(result.isEmpty());
         }
 
         @Test
-        void findByEmail_WhenUserExists_ReturnsUserIgnoringCaseAndSpaces() {
+        void findByEmail_WhenUserExists_ReturnsUser() {
             User user = User.builder()
                     .email("Alex@Example.com")
                     .passwordHash("secret123")
                     .role(Role.SELLER)
+                    .isActive(true)
                     .build();
 
             repository.save(user);
 
-            Optional<User> result = repository.findByEmail("  alex@example.com  ");
+            Optional<User> result = repository.findByEmail("Alex@Example.com");
 
             assertTrue(result.isPresent());
             assertEquals("Alex@Example.com", result.get().getEmail());
@@ -96,8 +123,16 @@ class UserRepositoryTest {
         }
 
         @Test
-        void findByEmail_WhenEmailDoesNotExist_ReturnsEmptyOptional() {
-            Optional<User> result = repository.findByEmail("notfound@example.com");
+        void findByEmail_WhenEmailDiffersInCaseOrWhitespace_ReturnsEmptyOptional() {
+            User user = User.builder()
+                    .email("Alex@Example.com")
+                    .passwordHash("secret123")
+                    .role(Role.SELLER)
+                    .isActive(true)
+                    .build();
+            repository.save(user);
+
+            Optional<User> result = repository.findByEmail("  alex@example.com  ");
 
             assertTrue(result.isEmpty());
         }
@@ -117,51 +152,50 @@ class UserRepositoryTest {
         }
 
         @Test
-        void save_WhenNewUser_AssignsIdAndIndexesEmail() {
+        void save_WhenNewUser_AssignsDatabaseIdAndPersistsUser() {
+            LocalDateTime createdAt = LocalDateTime.of(2024, 1, 2, 3, 4, 5, 123_000_000);
             User newUser = User.builder()
                     .email("sam@example.com")
                     .passwordHash("pass456")
                     .role(Role.BUYER)
                     .isActive(true)
+                    .createdAt(createdAt)
                     .build();
 
             User savedUser = repository.save(newUser);
 
             assertNotNull(savedUser.getId());
-            assertEquals(1000L, savedUser.getId());
-
-            assertTrue(repository.findById(1000L).isPresent());
-            assertTrue(repository.findByEmail("sam@example.com").isPresent());
+            assertEquals(savedUser, repository.findById(savedUser.getId()).orElseThrow());
+            assertEquals(savedUser, repository.findByEmail("sam@example.com").orElseThrow());
         }
 
         @Test
-        void update_WhenUserOrIdIsNull_ThrowsIllegalArgumentException() {
-            User userWithoutId = User.builder()
-                    .email("noid@example.com")
-                    .build();
-
-            assertThrows(IllegalArgumentException.class, () -> repository.update(null));
-            assertThrows(IllegalArgumentException.class, () -> repository.update(userWithoutId));
-        }
-
-        @Test
-        void update_WhenValidUser_UpdatesSuccessfully() {
+        void save_WhenExistingUser_UpdatesAllUserParameters() {
+            LocalDateTime createdAt = LocalDateTime.of(2025, 5, 6, 7, 8, 9, 456_000_000);
             User user = User.builder()
                     .email("original@example.com")
+                    .passwordHash("old-hash")
                     .role(Role.BUYER)
                     .isActive(true)
+                    .createdAt(LocalDateTime.of(2024, 1, 2, 3, 4, 5, 123_000_000))
                     .build();
 
             User saved = repository.save(user);
-
+            saved.setEmail("updated@example.com");
+            saved.setPasswordHash("new-hash");
             saved.setRole(Role.ADMIN);
             saved.setIsActive(false);
+            saved.setCreatedAt(createdAt);
 
-            User updated = repository.update(saved);
+            User updated = repository.save(saved);
 
+            assertEquals(saved.getId(), updated.getId());
+            assertEquals("updated@example.com", updated.getEmail());
+            assertEquals("new-hash", updated.getPasswordHash());
             assertEquals(Role.ADMIN, updated.getRole());
             assertFalse(updated.getIsActive());
-            assertEquals(Role.ADMIN, repository.findById(saved.getId()).get().getRole());
+            assertEquals(createdAt, updated.getCreatedAt());
+            assertEquals(updated, repository.findById(saved.getId()).orElseThrow());
         }
     }
 
@@ -170,28 +204,23 @@ class UserRepositoryTest {
 
         @Test
         void delete_WhenUserIsNull_ThrowsIllegalArgumentException() {
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> repository.delete(null)
-            );
-
-            assertEquals("User cannot be null", ex.getMessage());
+            assertThrows(IllegalArgumentException.class, () -> repository.delete(null));
         }
 
         @Test
-        void delete_WhenUserHasNullIdOrNotInDatabase_ThrowsRuntimeException() {
+        void delete_WhenUserHasNullId_ThrowsIllegalArgumentException() {
             User userWithoutId = User.builder().email("noid@example.com").build();
-            User userNotInDb = User.builder().id(9999L).email("ghost@example.com").build();
 
-            assertThrows(RuntimeException.class, () -> repository.delete(userWithoutId));
-            assertThrows(RuntimeException.class, () -> repository.delete(userNotInDb));
+            assertThrows(IllegalArgumentException.class, () -> repository.delete(userWithoutId));
         }
 
         @Test
-        void delete_WhenUserExists_RemovesFromDatabaseAndEmailIndex() {
+        void delete_WhenUserExists_RemovesUserFromDatabase() {
             User user = User.builder()
                     .email("alex@example.com")
                     .passwordHash("hash")
+                    .role(Role.BUYER)
+                    .isActive(true)
                     .build();
 
             User savedUser = repository.save(user);
@@ -208,8 +237,10 @@ class UserRepositoryTest {
 
         @Test
         void findAll_ReturnsAllSavedUsers() {
-            repository.save(User.builder().email("u1@example.com").build());
-            repository.save(User.builder().email("u2@example.com").build());
+            repository.save(User.builder().email("u1@example.com").passwordHash("hash")
+                    .role(Role.BUYER).isActive(true).build());
+            repository.save(User.builder().email("u2@example.com").passwordHash("hash")
+                    .role(Role.BUYER).isActive(true).build());
 
             List<User> allUsers = repository.findAll();
 
@@ -218,16 +249,17 @@ class UserRepositoryTest {
 
         @Test
         void findAllByRole_WhenRoleIsNull_ReturnsEmptyList() {
-            List<User> result = repository.findAllByRole(null);
-
-            assertTrue(result.isEmpty());
+            assertTrue(repository.findAllByRole(null).isEmpty());
         }
 
         @Test
         void findAllByRole_ReturnsOnlyMatchingUsers() {
-            User admin1 = User.builder().email("a1@example.com").role(Role.ADMIN).build();
-            User admin2 = User.builder().email("a2@example.com").role(Role.ADMIN).build();
-            User customer = User.builder().email("c1@example.com").role(Role.BUYER).build();
+            User admin1 = User.builder().email("a1@example.com").passwordHash("hash")
+                    .role(Role.ADMIN).isActive(true).build();
+            User admin2 = User.builder().email("a2@example.com").passwordHash("hash")
+                    .role(Role.ADMIN).isActive(true).build();
+            User customer = User.builder().email("c1@example.com").passwordHash("hash")
+                    .role(Role.BUYER).isActive(true).build();
 
             repository.save(admin1);
             repository.save(admin2);

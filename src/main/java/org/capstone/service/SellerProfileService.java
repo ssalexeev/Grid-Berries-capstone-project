@@ -3,7 +3,7 @@ package org.capstone.service;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.SellerProfileRepository;
+import org.capstone.repository.jdbc.SellerProfileRepository;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ public class SellerProfileService {
 
         SellerProfile sellerProfile = SellerProfile.builder()
                 .storeName(storeName)
-                .description(description)
+                .storeDescription(description)
                 .contactInfo(contactInfo)
                 .user(user)
                 .build();
@@ -68,13 +68,13 @@ public class SellerProfileService {
             existingProfile.setStoreName(storeName);
         }
         if (description != null) {
-            existingProfile.setDescription(description);
+            existingProfile.setStoreDescription(description);
         }
         if (contactInfo != null) {
             existingProfile.setContactInfo(contactInfo);
         }
 
-        return sellerRepository.update(existingProfile);
+        return sellerRepository.save(existingProfile);
     }
 
     public void deleteProfile(Long id) {

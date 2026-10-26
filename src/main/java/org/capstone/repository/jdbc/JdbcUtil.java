@@ -1,6 +1,5 @@
 package org.capstone.repository.jdbc;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -38,6 +37,20 @@ public class JdbcUtil {
         } catch (SQLException e) {
             throw new RuntimeException("Error executing database update: " + query, e);
         }
+    }
+
+    public long insertAndReturnId(String query, Object... args) {
+        return findOne(query, resultSet -> {
+            try {
+                long id = resultSet.getLong(1);
+                if (resultSet.wasNull()) {
+                    throw new IllegalStateException("Insert returned a null ID");
+                }
+                return id;
+            } catch (SQLException e) {
+                throw new RuntimeException("Failed to read generated ID", e);
+            }
+        }, args).orElseThrow(() -> new IllegalStateException("Insert did not return an ID"));
     }
 
     public void execute(String query, Consumer<PreparedStatement> consumer) {

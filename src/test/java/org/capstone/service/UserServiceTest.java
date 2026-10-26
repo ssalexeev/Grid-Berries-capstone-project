@@ -3,7 +3,7 @@ package org.capstone.service;
 
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.UserRepository;
+import org.capstone.repository.jdbc.UserRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -116,9 +116,6 @@ class UserServiceTest {
         }
     }
 
-    // ==========================================
-    // authenticate Tests
-    // ==========================================
     @Nested
     class AuthenticateTests {
 
@@ -263,9 +260,6 @@ class UserServiceTest {
         }
     }
 
-    // ==========================================
-    // updateUser, deactivateUser, deleteUser Tests
-    // ==========================================
     @Nested
     class MutationTests {
 
@@ -276,7 +270,7 @@ class UserServiceTest {
             assertThrows(IllegalArgumentException.class, () -> userService.updateUser(null));
             assertThrows(IllegalArgumentException.class, () -> userService.updateUser(userWithoutId));
 
-            verify(userRepository, never()).update(any());
+            verify(userRepository, never()).save(any());
         }
 
         @Test
@@ -285,13 +279,13 @@ class UserServiceTest {
             User existingUser = User.builder().id(userId).email("user@example.com").build();
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
-            when(userRepository.update(existingUser)).thenReturn(existingUser);
+            when(userRepository.save(existingUser)).thenReturn(existingUser);
 
             User result = userService.updateUser(existingUser);
 
             assertNotNull(result);
             verify(userRepository, times(1)).findById(userId);
-            verify(userRepository, times(1)).update(existingUser);
+            verify(userRepository, times(1)).save(existingUser);
         }
 
         @Test
@@ -304,7 +298,7 @@ class UserServiceTest {
             userService.deactivateUser(userId);
 
             assertFalse(activeUser.getIsActive());
-            verify(userRepository, times(1)).update(activeUser);
+            verify(userRepository, times(1)).save(activeUser);
         }
 
         @Test

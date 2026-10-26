@@ -9,9 +9,10 @@ CREATE TABLE IF NOT EXISTS "user" (
 
 CREATE TABLE IF NOT EXISTS seller_profile (
     id serial PRIMARY KEY,
-    user_id int,
+    user_id int NOT NULL,
     store_name varchar(100) NOT NULL,
     store_description text,
+    contact_info text,
     created_at timestamp DEFAULT NOW(),
     CONSTRAINT fk_seller_profile_on_user
         FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE

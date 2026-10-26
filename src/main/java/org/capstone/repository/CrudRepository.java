@@ -7,7 +7,7 @@ public interface CrudRepository<T, ID> {
 
     Iterable<T> findAll();
 
-    <S extends T> T save(S entity);
+    T save(T entity);
 
     void delete(T entity);
 

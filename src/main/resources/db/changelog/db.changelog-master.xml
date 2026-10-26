@@ -8,4 +8,8 @@
     <changeSet id="1" author="serghei-alexeev">
         <sqlFile path="changes/v1__init_schema.sql" relativeToChangelogFile="true"/>
     </changeSet>
+
+    <changeSet id="2" author="serghei-alexeev">
+        <sqlFile path="changes/v2__repository_columns.sql" relativeToChangelogFile="true"/>
+    </changeSet>
 </databaseChangeLog>
