@@ -33,27 +33,6 @@ class UserRepositoryTest {
             .withInitScript("db/changelog/changes/v1__init_schema.sql");
 
 
-    @BeforeAll
-    static void setupDatabase() {
-        JdbcUtil.setCredentials(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
-    }
-
-    @AfterAll
-    static void resetCredentials() {
-        JdbcUtil.setCredentials(
-                "jdbc:postgresql://localhost:5432/mydatabase",
-                "myuser",
-                "mypassword"
-        );
-    }
-
-    @BeforeEach
-    void setUp() {
-        JdbcUtil jdbcUtil = new JdbcUtil();
-        repository = new UserRepository(jdbcUtil);
-        jdbcUtil.execute("TRUNCATE TABLE \"user\" RESTART IDENTITY CASCADE");
-    }
-
 
     @Nested
     class FindByIdTests {

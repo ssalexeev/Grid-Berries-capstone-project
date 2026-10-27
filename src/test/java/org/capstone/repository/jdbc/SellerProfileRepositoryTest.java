@@ -30,23 +30,10 @@ class SellerProfileRepositoryTest {
     private UserRepository userRepository;
     private SellerProfileRepository repository;
 
-    @BeforeAll
-    static void setupDatabase() {
-        JdbcUtil.setCredentials(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
-    }
 
-    @AfterAll
-    static void resetCredentials() {
-        JdbcUtil.setCredentials(
-                "jdbc:postgresql://localhost:5432/mydatabase",
-                "myuser",
-                "mypassword"
-        );
-    }
 
     @BeforeEach
     void setUp() {
-        jdbcUtil = new JdbcUtil();
         userRepository = new UserRepository(jdbcUtil);
         repository = new SellerProfileRepository(jdbcUtil, userRepository);
         jdbcUtil.execute("TRUNCATE TABLE \"user\" RESTART IDENTITY CASCADE");
