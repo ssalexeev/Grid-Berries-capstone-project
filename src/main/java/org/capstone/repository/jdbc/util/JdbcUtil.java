@@ -2,6 +2,7 @@ package org.capstone.repository.jdbc.util;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.capstone.config.database.DBProperties;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -16,9 +17,10 @@ import java.util.function.Function;
 
 public class JdbcUtil {
 
-    private static  String url = "jdbc:postgresql://localhost:5432/mydatabase";
-    private static  String username = "myuser";
-    private static  String password = "mypassword";
+    private static  String url = DBProperties.URL;
+    private static  String username = DBProperties.USERNAME;
+    private static  String password = DBProperties.PASSWORD;
+
     private final DataSource dataSource;
 
     public JdbcUtil(int maxPoolSize) {

@@ -1,4 +1,4 @@
-package org.capstone.repository;
+package org.capstone.repository.jdbc.util;
 
 import java.util.Optional;
 

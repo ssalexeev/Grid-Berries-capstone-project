@@ -1,7 +1,5 @@
 package org.capstone.repository.jdbc.util;
 
-import org.capstone.repository.CrudRepository;
-
 import java.sql.ResultSet;
 import java.util.function.Function;
 
