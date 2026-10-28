@@ -3,6 +3,7 @@ package org.capstone.repository.jdbc;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
+import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;

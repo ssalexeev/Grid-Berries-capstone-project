@@ -1,4 +1,4 @@
-package org.capstone.repository.jdbc;
+package org.capstone.repository.jdbc.util;
 
 import org.capstone.repository.CrudRepository;
 

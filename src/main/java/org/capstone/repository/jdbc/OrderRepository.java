@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Order;
 import org.capstone.domain.OrderItem;
 import org.capstone.domain.enums.OrderStatus;
+import org.capstone.repository.jdbc.util.JdbcRepository;
+import org.capstone.repository.jdbc.util.JdbcUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

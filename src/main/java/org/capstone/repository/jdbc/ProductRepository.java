@@ -5,6 +5,8 @@ import org.capstone.domain.Category;
 import org.capstone.domain.Product;
 import org.capstone.domain.enums.ProductStatus;
 import org.capstone.domain.enums.ProductType;
+import org.capstone.repository.jdbc.util.JdbcRepository;
+import org.capstone.repository.jdbc.util.JdbcUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

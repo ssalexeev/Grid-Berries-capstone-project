@@ -1,5 +1,6 @@
 package org.capstone.repository.jdbc;
 
+import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;

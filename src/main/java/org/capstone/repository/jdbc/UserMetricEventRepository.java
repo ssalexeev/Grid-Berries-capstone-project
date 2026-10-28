@@ -3,6 +3,8 @@ package org.capstone.repository.jdbc;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.UserMetricEvent;
 import org.capstone.domain.enums.MetricEventType;
+import org.capstone.repository.jdbc.util.JdbcRepository;
+import org.capstone.repository.jdbc.util.JdbcUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
