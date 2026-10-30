@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
@@ -175,9 +176,6 @@ class UserServiceTest {
         }
     }
 
-    // ==========================================
-    // getUserById & getUserByEmail Tests
-    // ==========================================
     @Nested
     class GetUserTests {
 
@@ -230,9 +228,6 @@ class UserServiceTest {
         }
     }
 
-    // ==========================================
-    // getUsersByRole Tests
-    // ==========================================
     @Nested
     class GetUsersByRoleTests {
 

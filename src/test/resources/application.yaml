@@ -1,0 +1,12 @@
+spring:
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+metrics:
+  event:
+    type: view-search-addToCard-purchase

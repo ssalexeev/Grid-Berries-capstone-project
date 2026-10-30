@@ -5,6 +5,7 @@ import org.capstone.domain.Cart;
 import org.capstone.domain.CartItem;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
+import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
+@Repository
 @RequiredArgsConstructor
 public class CartRepository implements JdbcRepository<Cart, Long> {
     private final JdbcUtil jdbcUtil;
@@ -40,6 +42,7 @@ public class CartRepository implements JdbcRepository<Cart, Long> {
         if (cart == null) {
             throw new IllegalArgumentException("Cart cannot be null");
         }
+
         Long userId = cart.getUser() == null ? null : cart.getUser().getId();
         if (cart.getId() == null) {
             long id = jdbcUtil.insertAndReturnId("""

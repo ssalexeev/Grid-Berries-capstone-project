@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Category;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
+import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+@Repository
 @RequiredArgsConstructor
 public class CategoryRepository implements JdbcRepository<Category, Long> {
     private final JdbcUtil jdbcUtil;
@@ -34,6 +36,16 @@ public class CategoryRepository implements JdbcRepository<Category, Long> {
                 mapper(),
                 parentCategoryId
         );
+    }
+
+    public List<Category> findByProductId(Long productId) {
+        return jdbcUtil.findMany("""
+                SELECT category.*
+                FROM category
+                JOIN product_category ON product_category.category_id = category.id
+                WHERE product_category.product_id = ?
+                ORDER BY category.id
+                """, mapper(), productId);
     }
 
     @Override

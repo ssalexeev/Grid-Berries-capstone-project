@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.SalesAnalyticsReport;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
+import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -14,6 +15,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+
+@Repository
 @RequiredArgsConstructor
 public class SalesAnalyticsReportRepository implements JdbcRepository<SalesAnalyticsReport, Long> {
     private final JdbcUtil jdbcUtil;
