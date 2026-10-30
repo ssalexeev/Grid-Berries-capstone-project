@@ -9,6 +9,8 @@ import org.capstone.domain.enums.ProductStatus;
 import org.capstone.domain.enums.ProductType;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -27,6 +29,8 @@ public class Product {
     // Relationships
     private SellerProfile sellerProfile;
     private Category category;
+    @Builder.Default
+    private List<Category> categories = new ArrayList<>();
 
     public void updateStock(Integer quantity) {
         this.stockQuantity = quantity;

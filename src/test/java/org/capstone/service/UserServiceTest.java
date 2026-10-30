@@ -176,9 +176,6 @@ class UserServiceTest {
         }
     }
 
-    // ==========================================
-    // getUserById & getUserByEmail Tests
-    // ==========================================
     @Nested
     class GetUserTests {
 
@@ -231,9 +228,6 @@ class UserServiceTest {
         }
     }
 
-    // ==========================================
-    // getUsersByRole Tests
-    // ==========================================
     @Nested
     class GetUsersByRoleTests {
 

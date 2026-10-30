@@ -1,8 +1,7 @@
 package org.capstone.repository.jdbc.util;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -21,20 +20,33 @@ import java.util.function.Function;
 public class JdbcUtil {
     private final DataSource dataSource;
 
-
-    public Connection getConnection() throws SQLException {
-        return dataSource.getConnection();
+    public Connection getConnection() {
+        return DataSourceUtils.getConnection(dataSource);
     }
 
     public void execute(String query, Object... args) {
-        try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        Connection connection = getConnection();
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
 
             bindParameters(statement, args);
 
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Error executing database update: " + query, e);
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource);
+        }
+    }
+
+    public int executeAndReturnUpdateCount(String query, Object... args) {
+        Connection connection = getConnection();
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            bindParameters(statement, args);
+            return statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error executing database update: " + query, e);
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource);
         }
     }
 
@@ -53,21 +65,22 @@ public class JdbcUtil {
     }
 
     public void execute(String query, Consumer<PreparedStatement> consumer) {
-        try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        Connection connection = getConnection();
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
 
             consumer.accept(statement);
 
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Error executing database update: " + query, e);
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource);
         }
     }
 
     public <T> Optional<T> findOne(String query, Function<ResultSet, T> mapper, Object... args) {
-
-        try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        Connection connection = getConnection();
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
             bindParameters(statement, args);
 
             try (ResultSet rs = statement.executeQuery()) {
@@ -85,14 +98,16 @@ public class JdbcUtil {
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error executing findOne query: " + query, e);
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource);
         }
     }
 
     public <T> List<T> findMany(String query, Function<ResultSet, T> mapper, Object... args) {
         List<T> results = new ArrayList<>();
 
-        try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        Connection connection = getConnection();
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
 
             bindParameters(statement, args);
 
@@ -105,6 +120,8 @@ public class JdbcUtil {
             return results;
         } catch (SQLException e) {
             throw new RuntimeException("Error executing findMany query: " + query, e);
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource);
         }
     }
 

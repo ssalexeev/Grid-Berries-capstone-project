@@ -30,6 +30,10 @@ public class OrderRepository implements JdbcRepository<Order, Long> {
         return jdbcUtil.findOne("SELECT * FROM \"order\" WHERE id = ?", mapper(), id);
     }
 
+    public Optional<Order> findByIdForUpdate(Long id) {
+        return jdbcUtil.findOne("SELECT * FROM \"order\" WHERE id = ? FOR UPDATE", mapper(), id);
+    }
+
     @Override
     public List<Order> findAll() {
         return jdbcUtil.findMany("SELECT * FROM \"order\"", mapper());
