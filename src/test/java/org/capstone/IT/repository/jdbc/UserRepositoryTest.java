@@ -1,17 +1,15 @@
-package org.capstone.repository.jdbc;
+package org.capstone.IT.repository.jdbc;
 
 
+import org.capstone.IT.AbstractIntegrationTest;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
+import org.capstone.repository.jdbc.UserRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,36 +22,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
-@Testcontainers
-class UserRepositoryTest {
+class UserRepositoryTest extends AbstractIntegrationTest {
+    @Autowired
+    private JdbcUtil jdbcUtil;
+
     private UserRepository repository;
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine")
-            .withInitScript("db/changelog/changes/v1__init_schema.sql");
-
-
-    @BeforeAll
-    static void setupDatabase() {
-        JdbcUtil.setCredentials(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
-    }
-
-    @AfterAll
-    static void resetCredentials() {
-        JdbcUtil.setCredentials(
-                "jdbc:postgresql://localhost:5432/mydatabase",
-                "myuser",
-                "mypassword"
-        );
-    }
 
     @BeforeEach
     void setUp() {
-        JdbcUtil jdbcUtil = new JdbcUtil();
         repository = new UserRepository(jdbcUtil);
         jdbcUtil.execute("TRUNCATE TABLE \"user\" RESTART IDENTITY CASCADE");
     }
-
 
     @Nested
     class FindByIdTests {

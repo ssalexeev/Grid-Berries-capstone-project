@@ -42,6 +42,7 @@ public class CartRepository implements JdbcRepository<Cart, Long> {
         if (cart == null) {
             throw new IllegalArgumentException("Cart cannot be null");
         }
+
         Long userId = cart.getUser() == null ? null : cart.getUser().getId();
         if (cart.getId() == null) {
             long id = jdbcUtil.insertAndReturnId("""

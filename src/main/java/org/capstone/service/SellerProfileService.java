@@ -1,19 +1,19 @@
 package org.capstone.service;
 
+import lombok.RequiredArgsConstructor;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jdbc.SellerProfileRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+
+@Service
+@RequiredArgsConstructor
 public class SellerProfileService {
-
     private final SellerProfileRepository sellerRepository;
-
-    public SellerProfileService(SellerProfileRepository sellerRepository) {
-        this.sellerRepository = sellerRepository;
-    }
 
     public SellerProfile createProfile(User user, String storeName, String description, String contactInfo) {
         if (user == null || user.getId() == null) {

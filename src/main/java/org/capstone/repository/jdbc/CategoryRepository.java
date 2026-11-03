@@ -38,6 +38,16 @@ public class CategoryRepository implements JdbcRepository<Category, Long> {
         );
     }
 
+    public List<Category> findByProductId(Long productId) {
+        return jdbcUtil.findMany("""
+                SELECT category.*
+                FROM category
+                JOIN product_category ON product_category.category_id = category.id
+                WHERE product_category.product_id = ?
+                ORDER BY category.id
+                """, mapper(), productId);
+    }
+
     @Override
     public Category save(Category category) {
         if (category == null) {

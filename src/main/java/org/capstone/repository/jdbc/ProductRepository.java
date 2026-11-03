@@ -11,7 +11,10 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -35,6 +38,25 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
 
     public List<Product> findBySellerId(Long sellerId) {
         return jdbcUtil.findMany("SELECT * FROM product WHERE seller_id = ?", mapper(), sellerId);
+    }
+
+    public boolean reserveStock(Long productId, int quantity) {
+        return jdbcUtil.executeAndReturnUpdateCount("""
+                UPDATE product
+                SET stock_quantity = stock_quantity - ?
+                WHERE id = ? AND stock_quantity >= ?
+                """, quantity, productId, quantity) == 1;
+    }
+
+    public void restoreStock(Long productId, int quantity) {
+        int updated = jdbcUtil.executeAndReturnUpdateCount("""
+                UPDATE product
+                SET stock_quantity = stock_quantity + ?
+                WHERE id = ?
+                """, quantity, productId);
+        if (updated != 1) {
+            throw new IllegalStateException("Product not found while restoring reserved stock: " + productId);
+        }
     }
 
     @Override
@@ -66,12 +88,23 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
         }
 
         jdbcUtil.execute("DELETE FROM product_category WHERE product_id = ?", product.getId());
-        Category category = product.getCategory();
-        if (category != null && category.getId() != null) {
+        Map<Long, Category> categoriesById = new LinkedHashMap<>();
+        if (product.getCategories() != null) {
+            for (Category category : product.getCategories()) {
+                if (category != null && category.getId() != null) {
+                    categoriesById.put(category.getId(), category);
+                }
+            }
+        }
+        if (categoriesById.isEmpty() && product.getCategory() != null
+                && product.getCategory().getId() != null) {
+            categoriesById.put(product.getCategory().getId(), product.getCategory());
+        }
+        for (Long categoryId : categoriesById.keySet()) {
             jdbcUtil.execute("""
                     INSERT INTO product_category (product_id, category_id)
                     VALUES (?, ?)
-                    """, product.getId(), category.getId());
+                    """, product.getId(), categoryId);
         }
         return findById(product.getId()).orElse(null);
     }
@@ -92,8 +125,10 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
                 Long nullableSellerId = resultSet.wasNull() ? null : sellerId;
                 String type = resultSet.getString("type");
                 String status = resultSet.getString("status");
+                long productId = resultSet.getLong("id");
+                List<Category> categories = categoryRepository.findByProductId(productId);
                 return Product.builder()
-                        .id(resultSet.getLong("id"))
+                        .id(productId)
                         .title(resultSet.getString("title"))
                         .description(resultSet.getString("description"))
                         .price(resultSet.getBigDecimal("price"))
@@ -103,7 +138,8 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
                         .status(status == null ? null : ProductStatus.valueOf(status.toUpperCase()))
                         .sellerProfile(nullableSellerId == null
                                 ? null : sellerProfileRepository.findById(nullableSellerId).orElse(null))
-                        .category(findCategoryByProductId(resultSet.getLong("id")))
+                        .category(categories.isEmpty() ? null : categories.get(0))
+                        .categories(new ArrayList<>(categories))
                         .build();
             } catch (SQLException e) {
                 throw new RuntimeException("Failed to map ResultSet to Product", e);
@@ -111,14 +147,4 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
         };
     }
 
-    private Category findCategoryByProductId(long productId) {
-        return jdbcUtil.findOne("""
-                SELECT category.*
-                FROM category
-                JOIN product_category ON product_category.category_id = category.id
-                WHERE product_category.product_id = ?
-                ORDER BY category.id
-                LIMIT 1
-                """, categoryRepository.mapper(), productId).orElse(null);
-    }
 }

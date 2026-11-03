@@ -31,7 +31,8 @@ class SellerProfileServiceTest {
     private SellerProfileRepository sellerRepository;
 
     @InjectMocks
-    private SellerProfileService sellerProfileService;
+    private
+    SellerProfileService sellerProfileService;
 
     @Nested
     class CreateProfileTests {

@@ -1,19 +1,19 @@
 package org.capstone.service;
 
+import lombok.RequiredArgsConstructor;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jdbc.UserRepository;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
-
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     public User registerUser(String email, String passwordHash, Role role) {
         if (email == null || email.isBlank()) {
