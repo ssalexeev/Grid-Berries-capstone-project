@@ -5,7 +5,6 @@ import org.capstone.domain.Product;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.domain.enums.ProductType;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jdbc.CategoryRepository;
 import org.capstone.repository.jdbc.ProductRepository;
@@ -19,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,8 +34,6 @@ class ProductServiceTest {
     private SellerProfileRepository sellerProfileRepository;
     @Mock
     private CategoryRepository categoryRepository;
-    @Mock
-    private UserMetricEventService metricEventService;
 
     @InjectMocks
     private ProductService productService;
@@ -44,7 +42,7 @@ class ProductServiceTest {
     void createProductSetsPendingModerationAndPersistsCategories() {
         Category category = Category.builder().id(2L).name("Fruit").build();
         Product product = validProduct();
-        product.setCategory(category);
+        product.setCategories(Set.of(category));
         SellerProfile seller = sellerProfile();
         when(sellerProfileRepository.findById(1L)).thenReturn(Optional.of(seller));
         when(categoryRepository.findById(2L)).thenReturn(Optional.of(category));
@@ -54,7 +52,7 @@ class ProductServiceTest {
 
         assertEquals(ProductStatus.PENDING_MODERATION, created.getStatus());
         assertEquals(seller, created.getSellerProfile());
-        assertEquals(List.of(category), created.getCategories());
+        assertEquals(Set.of(category), created.getCategories());
         verify(productRepository).save(product);
     }
 
@@ -65,7 +63,7 @@ class ProductServiceTest {
         match.setId(3L);
         match.setTitle("Fresh strawberries");
         match.setStatus(ProductStatus.ACTIVE);
-        match.setCategory(category);
+        match.setCategories(Set.of(category));
         Product suspended = validProduct();
         suspended.setId(4L);
         suspended.setStatus(ProductStatus.SUSPENDED);
@@ -99,7 +97,6 @@ class ProductServiceTest {
                 .title("Strawberries")
                 .price(new BigDecimal("5.00"))
                 .stockQuantity(10)
-                .type(ProductType.PHYSICAL_GOOD)
                 .build();
     }
 
