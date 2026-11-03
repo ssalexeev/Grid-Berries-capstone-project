@@ -2,7 +2,7 @@ package org.capstone.repository.jdbc.util;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.capstone.config.database.DBProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -17,38 +17,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Repository
+@RequiredArgsConstructor
 public class JdbcUtil {
-
-    private static  String url = DBProperties.URL;
-    private static  String username = DBProperties.USERNAME;
-    private static  String password = DBProperties.PASSWORD;
-
     private final DataSource dataSource;
 
-    public JdbcUtil(int maxPoolSize) {
-        this.dataSource = createHikariPool(maxPoolSize);
-    }
-    public JdbcUtil() {
-        this.dataSource = createHikariPool(5);
-    }
 
-    public static void setCredentials(String newUrl, String newUsername, String newPassword) {
-        url = newUrl;
-        username = newUsername;
-        password = newPassword;
-    }
-
-    private HikariDataSource createHikariPool(int maxPoolSize) {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(url);
-        config.setUsername(username);
-        config.setPassword(password);
-        config.setMaximumPoolSize(maxPoolSize);
-        config.setConnectionTimeout(5000);
-        return new HikariDataSource(config);
-    }
-
-    public  Connection getConnection() throws SQLException {
+    public Connection getConnection() throws SQLException {
         return dataSource.getConnection();
     }
 
