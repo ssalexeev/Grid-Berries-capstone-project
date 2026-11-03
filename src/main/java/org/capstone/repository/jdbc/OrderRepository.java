@@ -6,6 +6,7 @@ import org.capstone.domain.OrderItem;
 import org.capstone.domain.enums.OrderStatus;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
+import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -16,6 +17,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
+
+@Repository
 @RequiredArgsConstructor
 public class OrderRepository implements JdbcRepository<Order, Long> {
     private final JdbcUtil jdbcUtil;

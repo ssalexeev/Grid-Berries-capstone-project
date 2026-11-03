@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.SellerProfile;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
+import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+@Repository
 @RequiredArgsConstructor
 public class SellerProfileRepository implements JdbcRepository<SellerProfile, Long> {
     private final JdbcUtil jdbcUtil;

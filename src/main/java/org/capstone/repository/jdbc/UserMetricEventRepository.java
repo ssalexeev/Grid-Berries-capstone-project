@@ -1,10 +1,14 @@
 package org.capstone.repository.jdbc;
 
 import lombok.RequiredArgsConstructor;
+import org.capstone.domain.User;
 import org.capstone.domain.UserMetricEvent;
 import org.capstone.domain.enums.MetricEventType;
+import org.capstone.repository.jdbc.util.CrudRepository;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,12 +17,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+@Repository
 @RequiredArgsConstructor
 public class UserMetricEventRepository implements JdbcRepository<UserMetricEvent, Long> {
     private final JdbcUtil jdbcUtil;
-    private final UserRepository userRepository;
+    // Reference via Interface
+    private final CrudRepository<User, Long> userRepository;
+    // Reference via Implementation Class
     private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
+
 
     @Override
     public Optional<UserMetricEvent> findById(Long id) {
