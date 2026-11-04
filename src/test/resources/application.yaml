@@ -6,7 +6,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-
-metrics:
-  event:
-    type: view-search-addToCard-purchase
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true

@@ -8,14 +8,13 @@ import org.capstone.domain.OrderItem;
 import org.capstone.domain.Product;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
-import org.capstone.domain.enums.MetricEventType;
 import org.capstone.domain.enums.OrderStatus;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.repository.jdbc.CartRepository;
-import org.capstone.repository.jdbc.OrderRepository;
-import org.capstone.repository.jdbc.ProductRepository;
-import org.capstone.repository.jdbc.SellerProfileRepository;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.CartRepository;
+import org.capstone.repository.jpa.OrderRepository;
+import org.capstone.repository.jpa.ProductRepository;
+import org.capstone.repository.jpa.SellerProfileRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,19 +31,18 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final SellerProfileRepository sellerProfileRepository;
-    private final UserMetricEventService metricEventService;
 
     @Transactional
     public Order placeOrder(Long userId) {
         User user = getUser(userId);
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Cart not found for user ID: " + userId));
-        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
             throw new IllegalStateException("Cannot place an order from an empty cart.");
         }
 
         List<OrderItem> orderItems = new ArrayList<>();
-        for (CartItem cartItem : cart.getItems()) {
+        for (CartItem cartItem : cart.getCartItems()) {
             if (cartItem.getProduct() == null || cartItem.getProduct().getId() == null) {
                 throw new IllegalStateException("Cart contains an item without a product.");
             }
@@ -56,9 +54,11 @@ public class OrderService {
             if (product.getStatus() != ProductStatus.ACTIVE) {
                 throw new IllegalStateException("Product is no longer available: " + product.getId());
             }
-            if (!productRepository.reserveStock(product.getId(), quantity)) {
+           //todo
+            /*if (!productRepository.reserveStock(product.getId(), quantity)) {
                 throw new IllegalStateException("Insufficient stock for product: " + product.getId());
-            }
+            }*/
+
             orderItems.add(OrderItem.builder()
                     .product(product)
                     .quantity(quantity)
@@ -77,19 +77,11 @@ public class OrderService {
         order.calculateTotal();
         Order savedOrder = orderRepository.save(order);
 
-        cart.setItems(new ArrayList<>());
+        cart.setCartItems(new ArrayList<>());
         cart.setTotalAmount(BigDecimal.ZERO);
         cart.setUpdatedAt(now);
         cartRepository.save(cart);
 
-        for (OrderItem item : savedOrder.getItems()) {
-            metricEventService.recordEvent(
-                    MetricEventType.PURCHASE,
-                    userId,
-                    item.getProduct().getId(),
-                    null,
-                    item.getId());
-        }
         return savedOrder;
     }
 
@@ -164,7 +156,7 @@ public class OrderService {
             if (item.getProduct() == null || item.getProduct().getId() == null || item.getQuantity() == null) {
                 throw new IllegalStateException("Order contains an invalid item and stock cannot be restored.");
             }
-            productRepository.restoreStock(item.getProduct().getId(), item.getQuantity());
+            productRepository.restoreStockQuantity(item.getProduct().getId(), item.getQuantity());
         }
     }
 
