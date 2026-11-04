@@ -1,10 +1,12 @@
 package org.capstone.repository.jdbc;
 
 import lombok.RequiredArgsConstructor;
+import org.capstone.domain.Cart;
 import org.capstone.domain.CartItem;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-@Repository
+@Repository("jdbcCartItemRepository")
 @RequiredArgsConstructor
 public class CartItemRepository implements JdbcRepository<CartItem, Long> {
     private final JdbcUtil jdbcUtil;
@@ -34,29 +36,37 @@ public class CartItemRepository implements JdbcRepository<CartItem, Long> {
     }
 
     @Override
+    @Transactional
     public CartItem save(CartItem item) {
         if (item == null) {
             throw new IllegalArgumentException("Cart item cannot be null");
         }
-        if (item.getCartId() == null) {
+        if (item.getCart() == null || item.getCart().getId() == null) {
             throw new IllegalArgumentException("Cart item must have a cart ID");
         }
+        if (item.getProduct() == null || item.getProduct().getId() == null) {
+            throw new IllegalArgumentException("Cart item must have a persisted product");
+        }
         Long productId = item.getProduct() == null ? null : item.getProduct().getId();
+        Long cartId = item.getCart().getId();
         if (item.getId() == null) {
             long id = jdbcUtil.insertAndReturnId("""
                     INSERT INTO cart_item (cart_id, product_id, quantity, created_at)
                     VALUES (?, ?, ?, ?)
-                    RETURNING id
-                    """, item.getCartId(), productId, item.getQuantity(), item.getAddedAt());
+                    """, cartId, productId, item.getQuantity(), item.getCreatedAt());
             item.setId(id);
         } else {
-            jdbcUtil.execute("""
+            int updated = jdbcUtil.executeAndReturnUpdateCount("""
                     UPDATE cart_item
-                    SET cart_id = ?, product_id = ?, quantity = ?, created_at = ?
+                    SET cart_id = ?, product_id = ?, quantity = ?
                     WHERE id = ?
-                    """, item.getCartId(), productId, item.getQuantity(), item.getAddedAt(), item.getId());
+                    """, cartId, productId, item.getQuantity(), item.getId());
+            if (updated != 1) {
+                throw new IllegalStateException("Cart item not found while updating: " + item.getId());
+            }
         }
-        return findById(item.getId()).orElse(null);
+        return findById(item.getId())
+                .orElseThrow(() -> new IllegalStateException("Saved cart item was not found: " + item.getId()));
     }
 
     @Override
@@ -78,9 +88,9 @@ public class CartItemRepository implements JdbcRepository<CartItem, Long> {
                 Timestamp addedAt = resultSet.getTimestamp("created_at");
                 return CartItem.builder()
                         .id(resultSet.getLong("id"))
-                        .cartId(nullableLong(resultSet, "cart_id"))
+                        .cart(Cart.builder().id(nullableLong(resultSet, "cart_id")).build())
                         .quantity((Integer) resultSet.getObject("quantity"))
-                        .addedAt(addedAt == null ? null : addedAt.toLocalDateTime())
+                        .createdAt(addedAt == null ? null : addedAt.toLocalDateTime())
                         .product(productRepository.findById(nullableLong(resultSet, "product_id")).orElse(null))
                         .build();
             } catch (SQLException e) {

@@ -6,6 +6,7 @@ import org.capstone.domain.CartItem;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -16,7 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-@Repository
+@Repository("jdbcCartRepository")
 @RequiredArgsConstructor
 public class CartRepository implements JdbcRepository<Cart, Long> {
     private final JdbcUtil jdbcUtil;
@@ -38,30 +39,36 @@ public class CartRepository implements JdbcRepository<Cart, Long> {
     }
 
     @Override
+    @Transactional
     public Cart save(Cart cart) {
         if (cart == null) {
             throw new IllegalArgumentException("Cart cannot be null");
         }
 
-        Long userId = cart.getUser() == null ? null : cart.getUser().getId();
+        if (cart.getUser() == null || cart.getUser().getId() == null) {
+            throw new IllegalArgumentException("Cart must have a persisted user");
+        }
+        Long userId = cart.getUser().getId();
         if (cart.getId() == null) {
             long id = jdbcUtil.insertAndReturnId("""
                     INSERT INTO cart (user_id, total_amount, updated_at)
                     VALUES (?, ?, ?)
-                    RETURNING id
                     """, userId, cart.getTotalAmount(), cart.getUpdatedAt());
             cart.setId(id);
         } else {
-            jdbcUtil.execute("""
+            int updated = jdbcUtil.executeAndReturnUpdateCount("""
                     UPDATE cart
                     SET user_id = ?, total_amount = ?, updated_at = ?
                     WHERE id = ?
                     """, userId, cart.getTotalAmount(), cart.getUpdatedAt(), cart.getId());
+            if (updated != 1) {
+                throw new IllegalStateException("Cart not found while updating: " + cart.getId());
+            }
         }
 
         List<CartItem> existingItems = cartItemRepository.findAllByCartId(cart.getId());
         Set<Long> retainedIds = new HashSet<>();
-        for (CartItem item : cart.getItems()) {
+        for (CartItem item : cart.getCartItems()) {
             if (item.getId() != null) {
                 retainedIds.add(item.getId());
             }
@@ -71,11 +78,12 @@ public class CartRepository implements JdbcRepository<Cart, Long> {
                 cartItemRepository.delete(existingItem);
             }
         }
-        for (CartItem item : cart.getItems()) {
-            item.setCartId(cart.getId());
+        for (CartItem item : cart.getCartItems()) {
+            item.setCart(cart);
             cartItemRepository.save(item);
         }
-        return findById(cart.getId()).orElse(null);
+        return findById(cart.getId())
+                .orElseThrow(() -> new IllegalStateException("Saved cart was not found: " + cart.getId()));
     }
 
     @Override
@@ -99,7 +107,7 @@ public class CartRepository implements JdbcRepository<Cart, Long> {
                         .totalAmount(resultSet.getBigDecimal("total_amount"))
                         .updatedAt(updatedAt == null ? null : updatedAt.toLocalDateTime())
                         .user(nullableUserId == null ? null : userRepository.findById(nullableUserId).orElse(null))
-                        .items(cartItemRepository.findAllByCartId(cartId))
+                        .cartItems(cartItemRepository.findAllByCartId(cartId))
                         .build();
             } catch (SQLException e) {
                 throw new RuntimeException("Failed to map ResultSet to Cart", e);

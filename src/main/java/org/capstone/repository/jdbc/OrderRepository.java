@@ -7,6 +7,7 @@ import org.capstone.domain.enums.OrderStatus;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,7 +19,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 
-@Repository
+@Repository("jdbcOrderRepository")
 @RequiredArgsConstructor
 public class OrderRepository implements JdbcRepository<Order, Long> {
     private final JdbcUtil jdbcUtil;
@@ -44,26 +45,31 @@ public class OrderRepository implements JdbcRepository<Order, Long> {
     }
 
     @Override
+    @Transactional
     public Order save(Order order) {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-        Long userId = order.getUser() == null ? null : order.getUser().getId();
+        if (order.getUser() == null || order.getUser().getId() == null) {
+            throw new IllegalArgumentException("Order must have a persisted user");
+        }
+        Long userId = order.getUser().getId();
         String status = order.getStatus() == null ? null : order.getStatus().name();
         if (order.getId() == null) {
             long id = jdbcUtil.insertAndReturnId("""
                     INSERT INTO "order" (user_id, status, total_amount, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?)
-                    RETURNING id
                     """, userId, status, order.getTotalAmount(), order.getCreatedAt(), order.getUpdatedAt());
             order.setId(id);
         } else {
-            jdbcUtil.execute("""
+            int updated = jdbcUtil.executeAndReturnUpdateCount("""
                     UPDATE "order"
-                    SET user_id = ?, status = ?, total_amount = ?, created_at = ?, updated_at = ?
+                    SET user_id = ?, status = ?, total_amount = ?, updated_at = ?
                     WHERE id = ?
-                    """, userId, status, order.getTotalAmount(), order.getCreatedAt(), order.getUpdatedAt(),
-                    order.getId());
+                    """, userId, status, order.getTotalAmount(), order.getUpdatedAt(), order.getId());
+            if (updated != 1) {
+                throw new IllegalStateException("Order not found while updating: " + order.getId());
+            }
         }
 
         List<OrderItem> existingItems = orderItemRepository.findAllByOrderId(order.getId());
@@ -80,10 +86,11 @@ public class OrderRepository implements JdbcRepository<Order, Long> {
             }
         }
         for (OrderItem item : order.getItems()) {
-            item.setOrderId(order.getId());
+            item.setOrder(order);
             orderItemRepository.save(item);
         }
-        return findById(order.getId()).orElse(null);
+        return findById(order.getId())
+                .orElseThrow(() -> new IllegalStateException("Saved order was not found: " + order.getId()));
     }
 
     @Override

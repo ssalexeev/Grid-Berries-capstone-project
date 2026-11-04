@@ -5,14 +5,16 @@ import org.capstone.domain.Category;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-@Repository
+@Repository("jdbcCategoryRepository")
 @RequiredArgsConstructor
 public class CategoryRepository implements JdbcRepository<Category, Long> {
     private final JdbcUtil jdbcUtil;
@@ -49,26 +51,31 @@ public class CategoryRepository implements JdbcRepository<Category, Long> {
     }
 
     @Override
+    @Transactional
     public Category save(Category category) {
         if (category == null) {
             throw new IllegalArgumentException("Category cannot be null");
         }
         if (category.getId() == null) {
             long id = jdbcUtil.insertAndReturnId("""
-                    INSERT INTO category (parent_category_id, name, description)
-                    VALUES (?, ?, ?)
-                    RETURNING id
-                    """, category.getParentCategoryId(), category.getName(), category.getDescription());
+                    INSERT INTO category (parent_category_id, name, description, created_at)
+                    VALUES (?, ?, ?, ?)
+                    """, category.getParentCategoryId(), category.getName(), category.getDescription(),
+                    category.getCreatedAt());
             category.setId(id);
         } else {
-            jdbcUtil.execute("""
+            int updated = jdbcUtil.executeAndReturnUpdateCount("""
                     UPDATE category
                     SET parent_category_id = ?, name = ?, description = ?
                     WHERE id = ?
                     """, category.getParentCategoryId(), category.getName(),
                     category.getDescription(), category.getId());
+            if (updated != 1) {
+                throw new IllegalStateException("Category not found while updating: " + category.getId());
+            }
         }
-        return findById(category.getId()).orElse(null);
+        return findById(category.getId())
+                .orElseThrow(() -> new IllegalStateException("Saved category was not found: " + category.getId()));
     }
 
     @Override
@@ -83,12 +90,15 @@ public class CategoryRepository implements JdbcRepository<Category, Long> {
     public Function<ResultSet, Category> mapper() {
         return resultSet -> {
             try {
-                return Category.builder()
+                Timestamp createdAt = resultSet.getTimestamp("created_at");
+                Category category = Category.builder()
                         .id(resultSet.getLong("id"))
-                        .parentCategoryId(nullableLong(resultSet, "parent_category_id"))
                         .name(resultSet.getString("name"))
                         .description(resultSet.getString("description"))
+                        .createdAt(createdAt == null ? null : createdAt.toLocalDateTime())
                         .build();
+                category.setParentCategoryId(nullableLong(resultSet, "parent_category_id"));
+                return category;
             } catch (SQLException e) {
                 throw new RuntimeException("Failed to map ResultSet to Category", e);
             }
