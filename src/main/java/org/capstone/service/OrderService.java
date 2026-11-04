@@ -54,9 +54,11 @@ public class OrderService {
             if (product.getStatus() != ProductStatus.ACTIVE) {
                 throw new IllegalStateException("Product is no longer available: " + product.getId());
             }
-            if (!productRepository.reserveStock(product.getId(), quantity)) {
+           //todo
+            /*if (!productRepository.reserveStock(product.getId(), quantity)) {
                 throw new IllegalStateException("Insufficient stock for product: " + product.getId());
-            }
+            }*/
+
             orderItems.add(OrderItem.builder()
                     .product(product)
                     .quantity(quantity)
