@@ -6,6 +6,7 @@ import org.capstone.domain.enums.Role;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-@Repository
+@Repository("jdbcUserRepository")
 @RequiredArgsConstructor
 public class UserRepository implements JdbcRepository<User, Long> {
     private final JdbcUtil jdbcUtil;
@@ -49,6 +50,7 @@ public class UserRepository implements JdbcRepository<User, Long> {
 
 
     @Override
+    @Transactional
     public User save(User user) {
         if (user == null) {
             throw new IllegalArgumentException("User cannot be null");
@@ -58,35 +60,30 @@ public class UserRepository implements JdbcRepository<User, Long> {
             String saveQuery = """
                     INSERT INTO "user" (email, password_hash, role, is_active, created_at)
                     VALUES (?, ?, ?, ?, ?)
-                    RETURNING id
                     """;
-            Long id = jdbcUtil.findOne(saveQuery, rs -> {
-                try {
-                    return rs.getLong("id");
-                } catch (SQLException e) {
-                    throw new RuntimeException("Failed to read generated user ID", e);
-                }
-            }, user.getEmail(), user.getPasswordHash(),
+            Long id = jdbcUtil.insertAndReturnId(saveQuery, user.getEmail(), user.getPasswordHash(),
                     user.getRole() != null ? user.getRole().name() : null,
-                    user.getIsActive(), user.getCreatedAt())
-                    .orElseThrow(() -> new IllegalStateException("User insert did not return an ID"));
+                    user.getIsActive(), user.getCreatedAt());
             user.setId(id);
         } else {
             String updateQuery = """
                     UPDATE "user"
-                    SET email = ?, password_hash = ?, role = ?, is_active = ?, created_at = ?
+                    SET email = ?, password_hash = ?, role = ?, is_active = ?
                     WHERE id = ?
                     """;
-            jdbcUtil.execute(updateQuery,
+            int updated = jdbcUtil.executeAndReturnUpdateCount(updateQuery,
                     user.getEmail(),
                     user.getPasswordHash(),
                     user.getRole() != null ? user.getRole().name() : null,
                     user.getIsActive(),
-                    user.getCreatedAt(),
                     user.getId());
+            if (updated != 1) {
+                throw new IllegalStateException("User not found while updating: " + user.getId());
+            }
         }
 
-        return findById(user.getId()).orElse(null);
+        return findById(user.getId())
+                .orElseThrow(() -> new IllegalStateException("Saved user was not found: " + user.getId()));
     }
 
     @Override

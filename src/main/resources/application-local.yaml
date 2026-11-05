@@ -5,10 +5,6 @@ spring:
     password: localpass
     driver-class-name: org.h2.Driver
 
-metrics:
-  event:
-    type: view-search-addToCard-purchase
-
 time:
   timeInDefaultUnit: 10
   timeInNano: 9ns
