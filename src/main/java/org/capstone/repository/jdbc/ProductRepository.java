@@ -4,22 +4,22 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Category;
 import org.capstone.domain.Product;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.domain.enums.ProductType;
 import org.capstone.repository.jdbc.util.JdbcRepository;
 import org.capstone.repository.jdbc.util.JdbcUtil;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.sql.Timestamp;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 
-@Repository
+@Repository("jdbcProductRepository")
 @RequiredArgsConstructor
 public class ProductRepository implements JdbcRepository<Product, Long> {
     private final JdbcUtil jdbcUtil;
@@ -37,10 +37,13 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
     }
 
     public List<Product> findBySellerId(Long sellerId) {
-        return jdbcUtil.findMany("SELECT * FROM product WHERE seller_id = ?", mapper(), sellerId);
+        return jdbcUtil.findMany("SELECT * FROM product WHERE seller_profile_id = ?", mapper(), sellerId);
     }
 
     public boolean reserveStock(Long productId, int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Reserved quantity must be positive");
+        }
         return jdbcUtil.executeAndReturnUpdateCount("""
                 UPDATE product
                 SET stock_quantity = stock_quantity - ?
@@ -49,6 +52,9 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
     }
 
     public void restoreStock(Long productId, int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Restored quantity must be positive");
+        }
         int updated = jdbcUtil.executeAndReturnUpdateCount("""
                 UPDATE product
                 SET stock_quantity = stock_quantity + ?
@@ -60,53 +66,55 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
     }
 
     @Override
+    @Transactional
     public Product save(Product product) {
         if (product == null) {
             throw new IllegalArgumentException("Product cannot be null");
         }
-        Long sellerId = product.getSellerProfile() == null ? null : product.getSellerProfile().getId();
-        String type = product.getType() == null ? null : product.getType().name();
+        if (product.getSellerProfile() == null || product.getSellerProfile().getId() == null) {
+            throw new IllegalArgumentException("Product must have a persisted seller profile");
+        }
+        Long sellerId = product.getSellerProfile().getId();
         String status = product.getStatus() == null ? null : product.getStatus().name();
 
         if (product.getId() == null) {
             long id = jdbcUtil.insertAndReturnId("""
                     INSERT INTO product
-                        (seller_id, title, description, price, stock_quantity, image_url, type, status)
+                        (seller_profile_id, title, description, price, stock_quantity, image_url, status, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    RETURNING id
                     """, sellerId, product.getTitle(), product.getDescription(), product.getPrice(),
-                    product.getStockQuantity(), product.getImageUrl(), type, status);
+                    product.getStockQuantity(), product.getImageUrl(), status, product.getCreatedAt());
             product.setId(id);
         } else {
-            jdbcUtil.execute("""
+            int updated = jdbcUtil.executeAndReturnUpdateCount("""
                     UPDATE product
-                    SET seller_id = ?, title = ?, description = ?, price = ?, stock_quantity = ?,
-                        image_url = ?, type = ?, status = ?
+                    SET seller_profile_id = ?, title = ?, description = ?, price = ?, stock_quantity = ?,
+                        image_url = ?, status = ?
                     WHERE id = ?
                     """, sellerId, product.getTitle(), product.getDescription(), product.getPrice(),
-                    product.getStockQuantity(), product.getImageUrl(), type, status, product.getId());
+                    product.getStockQuantity(), product.getImageUrl(), status, product.getId());
+            if (updated != 1) {
+                throw new IllegalStateException("Product not found while updating: " + product.getId());
+            }
         }
 
         jdbcUtil.execute("DELETE FROM product_category WHERE product_id = ?", product.getId());
-        Map<Long, Category> categoriesById = new LinkedHashMap<>();
+        Set<Long> categoryIds = new HashSet<>();
         if (product.getCategories() != null) {
             for (Category category : product.getCategories()) {
                 if (category != null && category.getId() != null) {
-                    categoriesById.put(category.getId(), category);
+                    categoryIds.add(category.getId());
                 }
             }
         }
-        if (categoriesById.isEmpty() && product.getCategory() != null
-                && product.getCategory().getId() != null) {
-            categoriesById.put(product.getCategory().getId(), product.getCategory());
-        }
-        for (Long categoryId : categoriesById.keySet()) {
+        for (Long categoryId : categoryIds) {
             jdbcUtil.execute("""
                     INSERT INTO product_category (product_id, category_id)
                     VALUES (?, ?)
                     """, product.getId(), categoryId);
         }
-        return findById(product.getId()).orElse(null);
+        return findById(product.getId())
+                .orElseThrow(() -> new IllegalStateException("Saved product was not found: " + product.getId()));
     }
 
     @Override
@@ -121,11 +129,10 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
     public Function<ResultSet, Product> mapper() {
         return resultSet -> {
             try {
-                long sellerId = resultSet.getLong("seller_id");
-                Long nullableSellerId = resultSet.wasNull() ? null : sellerId;
-                String type = resultSet.getString("type");
+                long sellerId = resultSet.getLong("seller_profile_id");
                 String status = resultSet.getString("status");
                 long productId = resultSet.getLong("id");
+                Timestamp createdAt = resultSet.getTimestamp("created_at");
                 List<Category> categories = categoryRepository.findByProductId(productId);
                 return Product.builder()
                         .id(productId)
@@ -134,12 +141,12 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
                         .price(resultSet.getBigDecimal("price"))
                         .stockQuantity((Integer) resultSet.getObject("stock_quantity"))
                         .imageUrl(resultSet.getString("image_url"))
-                        .type(type == null ? null : ProductType.valueOf(type.toUpperCase()))
                         .status(status == null ? null : ProductStatus.valueOf(status.toUpperCase()))
-                        .sellerProfile(nullableSellerId == null
-                                ? null : sellerProfileRepository.findById(nullableSellerId).orElse(null))
-                        .category(categories.isEmpty() ? null : categories.get(0))
-                        .categories(new ArrayList<>(categories))
+                        .sellerProfile(sellerProfileRepository.findById(sellerId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Product references missing seller profile: " + sellerId)))
+                        .categories(new HashSet<>(categories))
+                        .createdAt(createdAt == null ? null : createdAt.toLocalDateTime())
                         .build();
             } catch (SQLException e) {
                 throw new RuntimeException("Failed to map ResultSet to Product", e);

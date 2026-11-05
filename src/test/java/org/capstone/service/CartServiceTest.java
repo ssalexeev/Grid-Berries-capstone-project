@@ -5,9 +5,9 @@ import org.capstone.domain.CartItem;
 import org.capstone.domain.Product;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.repository.jdbc.CartRepository;
-import org.capstone.repository.jdbc.ProductRepository;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.CartRepository;
+import org.capstone.repository.jpa.ProductRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +21,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,8 +31,6 @@ class CartServiceTest {
     private ProductRepository productRepository;
     @Mock
     private UserRepository userRepository;
-    @Mock
-    private UserMetricEventService metricEventService;
 
     @InjectMocks
     private CartService cartService;
@@ -51,7 +48,7 @@ class CartServiceTest {
         Cart cart = Cart.builder()
                 .id(2L)
                 .user(user)
-                .items(new ArrayList<>(List.of(existingItem)))
+                .cartItems(new ArrayList<>(List.of(existingItem)))
                 .build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
@@ -60,9 +57,7 @@ class CartServiceTest {
 
         Cart updated = cartService.addProduct(1L, 4L, 3);
 
-        assertEquals(5, updated.getItems().get(0).getQuantity());
+        assertEquals(5, updated.getCartItems().get(0).getQuantity());
         assertEquals(new BigDecimal("17.50"), updated.getTotalAmount());
-        verify(metricEventService).recordEvent(
-                org.capstone.domain.enums.MetricEventType.ADD_TO_CART, 1L, 4L, null, null);
     }
 }

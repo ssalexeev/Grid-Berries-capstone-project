@@ -4,13 +4,14 @@ package org.capstone.IT.service;
 import org.capstone.IT.AbstractIntegrationTest;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.capstone.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -18,6 +19,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
+@Transactional
 public class UserServiceIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private UserService userService;
