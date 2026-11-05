@@ -130,7 +130,6 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
         return resultSet -> {
             try {
                 long sellerId = resultSet.getLong("seller_profile_id");
-                Long nullableSellerId = resultSet.wasNull() ? null : sellerId;
                 String status = resultSet.getString("status");
                 long productId = resultSet.getLong("id");
                 Timestamp createdAt = resultSet.getTimestamp("created_at");
@@ -143,8 +142,9 @@ public class ProductRepository implements JdbcRepository<Product, Long> {
                         .stockQuantity((Integer) resultSet.getObject("stock_quantity"))
                         .imageUrl(resultSet.getString("image_url"))
                         .status(status == null ? null : ProductStatus.valueOf(status.toUpperCase()))
-                        .sellerProfile(nullableSellerId == null
-                                ? null : sellerProfileRepository.findById(nullableSellerId).orElse(null))
+                        .sellerProfile(sellerProfileRepository.findById(sellerId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Product references missing seller profile: " + sellerId)))
                         .categories(new HashSet<>(categories))
                         .createdAt(createdAt == null ? null : createdAt.toLocalDateTime())
                         .build();

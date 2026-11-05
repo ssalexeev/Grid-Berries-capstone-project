@@ -97,14 +97,15 @@ public class SellerProfileRepository implements JdbcRepository<SellerProfile, Lo
         return rs -> {
             try {
                 Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
+                long userId = rs.getLong("user_id");
                 return SellerProfile.builder()
                         .id(rs.getLong("id"))
                         .storeName(rs.getString("store_name"))
                         .storeDescription(rs.getString("store_description"))
                         .contactInfo(rs.getString("contact_info"))
-                        .user(userRepository.findById(rs.getLong("user_id"))
-                                .orElse(null)
-                        )
+                        .user(userRepository.findById(userId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Seller profile references missing user: " + userId)))
                         .createdAt(createdAtTimestamp != null ? createdAtTimestamp.toLocalDateTime() : null)
                         .build();
             } catch (SQLException e) {

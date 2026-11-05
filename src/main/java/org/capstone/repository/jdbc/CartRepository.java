@@ -100,13 +100,14 @@ public class CartRepository implements JdbcRepository<Cart, Long> {
             try {
                 Timestamp updatedAt = resultSet.getTimestamp("updated_at");
                 long userId = resultSet.getLong("user_id");
-                Long nullableUserId = resultSet.wasNull() ? null : userId;
                 long cartId = resultSet.getLong("id");
                 return Cart.builder()
                         .id(cartId)
                         .totalAmount(resultSet.getBigDecimal("total_amount"))
                         .updatedAt(updatedAt == null ? null : updatedAt.toLocalDateTime())
-                        .user(nullableUserId == null ? null : userRepository.findById(nullableUserId).orElse(null))
+                        .user(userRepository.findById(userId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Cart references missing user: " + userId)))
                         .cartItems(cartItemRepository.findAllByCartId(cartId))
                         .build();
             } catch (SQLException e) {

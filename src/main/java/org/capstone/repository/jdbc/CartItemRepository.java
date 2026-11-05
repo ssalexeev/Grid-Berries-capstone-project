@@ -86,12 +86,16 @@ public class CartItemRepository implements JdbcRepository<CartItem, Long> {
         return resultSet -> {
             try {
                 Timestamp addedAt = resultSet.getTimestamp("created_at");
+                Long cartId = requiredLong(resultSet, "cart_id");
+                Long productId = requiredLong(resultSet, "product_id");
                 return CartItem.builder()
                         .id(resultSet.getLong("id"))
-                        .cart(Cart.builder().id(nullableLong(resultSet, "cart_id")).build())
+                        .cart(Cart.builder().id(cartId).build())
                         .quantity((Integer) resultSet.getObject("quantity"))
                         .createdAt(addedAt == null ? null : addedAt.toLocalDateTime())
-                        .product(productRepository.findById(nullableLong(resultSet, "product_id")).orElse(null))
+                        .product(productRepository.findById(productId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Cart item references missing product: " + productId)))
                         .build();
             } catch (SQLException e) {
                 throw new RuntimeException("Failed to map ResultSet to CartItem", e);
@@ -102,5 +106,13 @@ public class CartItemRepository implements JdbcRepository<CartItem, Long> {
     private Long nullableLong(ResultSet resultSet, String column) throws SQLException {
         long value = resultSet.getLong(column);
         return resultSet.wasNull() ? null : value;
+    }
+
+    private Long requiredLong(ResultSet resultSet, String column) throws SQLException {
+        Long value = nullableLong(resultSet, column);
+        if (value == null) {
+            throw new IllegalStateException("Required database column is null: " + column);
+        }
+        return value;
     }
 }

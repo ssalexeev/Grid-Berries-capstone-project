@@ -109,7 +109,6 @@ public class OrderRepository implements JdbcRepository<Order, Long> {
                 Timestamp updatedAt = resultSet.getTimestamp("updated_at");
                 String status = resultSet.getString("status");
                 long userId = resultSet.getLong("user_id");
-                Long nullableUserId = resultSet.wasNull() ? null : userId;
                 long orderId = resultSet.getLong("id");
                 return Order.builder()
                         .id(orderId)
@@ -117,7 +116,9 @@ public class OrderRepository implements JdbcRepository<Order, Long> {
                         .totalAmount(resultSet.getBigDecimal("total_amount"))
                         .createdAt(createdAt == null ? null : createdAt.toLocalDateTime())
                         .updatedAt(updatedAt == null ? null : updatedAt.toLocalDateTime())
-                        .user(nullableUserId == null ? null : userRepository.findById(nullableUserId).orElse(null))
+                        .user(userRepository.findById(userId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Order references missing user: " + userId)))
                         .items(orderItemRepository.findAllByOrderId(orderId))
                         .build();
             } catch (SQLException e) {

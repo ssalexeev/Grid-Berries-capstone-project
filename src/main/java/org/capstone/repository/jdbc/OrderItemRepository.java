@@ -86,13 +86,16 @@ public class OrderItemRepository implements JdbcRepository<OrderItem, Long> {
         return resultSet -> {
             try {
                 Timestamp createdAt = resultSet.getTimestamp("created_at");
-                Long orderId = nullableLong(resultSet, "order_id");
+                Long orderId = requiredLong(resultSet, "order_id");
+                Long productId = requiredLong(resultSet, "product_id");
                 return OrderItem.builder()
                         .id(resultSet.getLong("id"))
                         .order(orderId == null ? null : Order.builder().id(orderId).build())
                         .quantity((Integer) resultSet.getObject("quantity"))
                         .unitPrice(resultSet.getBigDecimal("unit_price"))
-                        .product(productRepository.findById(nullableLong(resultSet, "product_id")).orElse(null))
+                        .product(productRepository.findById(productId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "Order item references missing product: " + productId)))
                         .createdAt(createdAt == null ? null : createdAt.toLocalDateTime())
                         .build();
             } catch (SQLException e) {
@@ -104,5 +107,13 @@ public class OrderItemRepository implements JdbcRepository<OrderItem, Long> {
     private Long nullableLong(ResultSet resultSet, String column) throws SQLException {
         long value = resultSet.getLong(column);
         return resultSet.wasNull() ? null : value;
+    }
+
+    private Long requiredLong(ResultSet resultSet, String column) throws SQLException {
+        Long value = nullableLong(resultSet, column);
+        if (value == null) {
+            throw new IllegalStateException("Required database column is null: " + column);
+        }
+        return value;
     }
 }
