@@ -1,10 +1,16 @@
 package org.capstone.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
+import org.capstone.dto.in.UserRegistrationRequest;
+import org.capstone.dto.out.UserRegistrationResponse;
 import org.capstone.repository.jpa.UserRepository;
+import org.capstone.util.exception.UserAlreadyExistsException;
+import org.capstone.util.mapper.user.UserMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,33 +18,21 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class UserService {
-
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
-    public User registerUser(String email, String passwordHash, Role role) {
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Email cannot be empty.");
-        }
-        if (passwordHash == null || passwordHash.isBlank()) {
-            throw new IllegalArgumentException("Password cannot be empty.");
-        }
 
-        // Check for duplicate email across all existing users
-        boolean emailExists = userRepository.findAll().stream()
-                .anyMatch(u -> email.equalsIgnoreCase(u.getEmail()));
+    //todo: add email index and optimize query
+    @Transactional
+    public UserRegistrationResponse registerUser(UserRegistrationRequest userRegistrationRequest) {
+        boolean emailExists = userRepository.existsByEmailIgnoreCase(userRegistrationRequest.getEmail());
         if (emailExists) {
-            throw new IllegalStateException("User with email " + email + " already exists.");
+            throw new UserAlreadyExistsException("User with email " + userRegistrationRequest.getEmail() + " already exists.");
         }
 
-        User user = User.builder()
-                .email(email)
-                .passwordHash(passwordHash)
-                .role(role != null ? role : Role.BUYER)
-                .isActive(true)
-                .createdAt(LocalDateTime.now())
-                .build();
+        User savedUser = userRepository.save(userMapper.toEntity(userRegistrationRequest));
 
-        return userRepository.save(user);
+        return userMapper.toResponse(savedUser);
     }
 
     public User authenticate(String email, String passwordHash) {
@@ -58,7 +52,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + id));
     }
 
-    public User getUserByEmail(String email){
+    public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
     }
@@ -92,5 +86,10 @@ public class UserService {
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
+    }
+
+    public User getByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("User by email:" + email + "not found"));
     }
 }
