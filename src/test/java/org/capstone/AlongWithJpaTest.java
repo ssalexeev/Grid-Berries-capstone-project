@@ -17,7 +17,6 @@ import org.capstone.repository.jpa.ProductRepository;
 import org.capstone.repository.jpa.SellerProfileRepository;
 import org.capstone.repository.jpa.UserRepository;
 import org.hibernate.exception.ConstraintViolationException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
