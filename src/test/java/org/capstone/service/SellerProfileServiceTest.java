@@ -3,7 +3,7 @@ package org.capstone.service;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.SellerProfileRepository;
+import org.capstone.repository.jpa.SellerProfileRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

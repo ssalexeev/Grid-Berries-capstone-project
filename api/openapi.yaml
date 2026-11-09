@@ -1,0 +1,1642 @@
+openapi: 3.1.0
+info:
+  title: Grid Berries API
+  version: 1.0.0
+  description: |
+    REST API for the Grid Berries marketplace. Collection endpoints use a
+    consistent page envelope and support page/size pagination and sort
+    parameters. Unless noted otherwise, protected operations require a bearer
+    access token. Roles and resource ownership are enforced by the service.
+servers:
+  - url: /api/v1
+    description: Version 1 API
+tags:
+  - name: Authentication
+  - name: Users
+  - name: Seller profile
+  - name: Products
+  - name: Categories
+  - name: Cart
+  - name: Orders
+  - name: Recommendations
+  - name: Activity
+  - name: Seller analytics
+  - name: Administration
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags: [Authentication]
+      operationId: registerUser
+      summary: Register a buyer or seller account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Authenticate and issue access and refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshTokens
+      summary: Exchange a refresh token for a new token pair
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoke the supplied refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/me:
+    get:
+      tags: [Users]
+      operationId: getCurrentUser
+      summary: Get the authenticated user's account
+      responses:
+        '200':
+          description: Current account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /seller-profile:
+    get:
+      tags: [Seller profile]
+      operationId: getSellerProfile
+      summary: Get the authenticated seller's profile
+      responses:
+        '200':
+          description: Seller profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerProfile'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Seller profile]
+      operationId: createSellerProfile
+      summary: Create the authenticated seller's store profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SellerProfileInput'
+      responses:
+        '201':
+          description: Profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    patch:
+      tags: [Seller profile]
+      operationId: updateSellerProfile
+      summary: Update the authenticated seller's store profile
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/SellerProfilePatch'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /products:
+    get:
+      tags: [Products]
+      operationId: searchProducts
+      summary: Search the active product catalog
+      description: |
+        Filters can be combined. Results include active products only; set
+        availableOnly to true to exclude products with no stock. Search and
+        view interactions are recorded for activity metrics when a user is
+        authenticated.
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/ProductSort'
+        - name: q
+          in: query
+          description: Case-insensitive text search over product title and description
+          schema:
+            type: string
+            maxLength: 200
+        - name: categoryId
+          in: query
+          description: Include products assigned to this category
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            format: decimal
+            minimum: 0
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            format: decimal
+            minimum: 0
+        - name: availableOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: sellerId
+          in: query
+          description: Filter by seller profile ID
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Page of matching products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Products]
+      operationId: createProduct
+      summary: Create a product listing for the authenticated seller
+      description: New listings start in PENDING_MODERATION status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Product created and submitted for moderation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /products/{productId}:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      tags: [Products]
+      operationId: getProduct
+      summary: Get the details and current stock of an active product
+      description: Viewing a product records a VIEW activity for authenticated users.
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Products]
+      operationId: replaceProduct
+      summary: Replace a product listing owned by the authenticated seller
+      description: Product status is managed separately by moderation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Products]
+      operationId: updateProduct
+      summary: Partially update a product listing owned by the authenticated seller
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/ProductPatch'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Products]
+      operationId: deleteProduct
+      summary: Delete a product listing owned by the authenticated seller
+      responses:
+        '204':
+          description: Product deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /seller/products:
+    get:
+      tags: [Products]
+      operationId: listSellerProducts
+      summary: List the authenticated seller's products
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/ProductSort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProductStatus'
+      responses:
+        '200':
+          description: Page of seller products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /products/{productId}/moderation:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    patch:
+      tags: [Administration, Products]
+      operationId: moderateProduct
+      summary: Approve or suspend a product listing
+      description: Admin-only moderation. A product can be approved or suspended.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductModerationRequest'
+      responses:
+        '200':
+          description: Product moderation status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /categories:
+    get:
+      tags: [Categories]
+      operationId: listCategories
+      summary: List categories
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: parentId
+          in: query
+          description: Filter by parent category; omit to list all categories
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: sort
+          in: query
+          description: Sort field and direction
+          schema:
+            type: string
+            default: name,asc
+            enum: ['name,asc', 'name,desc', 'createdAt,asc', 'createdAt,desc']
+      responses:
+        '200':
+          description: Page of categories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Categories]
+      operationId: createCategory
+      summary: Create a category or subcategory
+      description: Admin-only. A null parentId creates a root category.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /categories/tree:
+    get:
+      tags: [Categories]
+      operationId: getCategoryTree
+      summary: Get the category hierarchy
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: Root categories and their nested children
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryNode'
+  /categories/{categoryId}:
+    parameters:
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    get:
+      tags: [Categories]
+      operationId: getCategory
+      summary: Get a category
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Categories]
+      operationId: updateCategory
+      summary: Update a category or move it within the category tree
+      description: Admin-only. Cycles and self-descendant moves are rejected.
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/CategoryPatch'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Categories]
+      operationId: deleteCategory
+      summary: Delete a category
+      description: Admin-only. Direct children are moved to the deleted category's parent.
+      responses:
+        '204':
+          description: Category deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /cart:
+    get:
+      tags: [Cart]
+      operationId: getCart
+      summary: Get or create the authenticated buyer's cart
+      responses:
+        '200':
+          description: Cart and its current items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [Cart]
+      operationId: clearCart
+      summary: Remove all items from the authenticated buyer's cart
+      responses:
+        '200':
+          description: Empty cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /cart/items:
+    post:
+      tags: [Cart]
+      operationId: addCartItem
+      summary: Add a product to the authenticated buyer's cart
+      description: Adding an item records an ADD_TO_CART activity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCartItemRequest'
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /cart/items/{itemId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    patch:
+      tags: [Cart]
+      operationId: updateCartItemQuantity
+      summary: Change the quantity of a cart item
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/UpdateCartItemRequest'
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Cart]
+      operationId: removeCartItem
+      summary: Remove an item from the authenticated buyer's cart
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /orders:
+    get:
+      tags: [Orders]
+      operationId: listOrders
+      summary: List the authenticated buyer's order history
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/OrderSort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: createdAfter
+          in: query
+          description: Include orders created at or after this timestamp
+          schema:
+            type: string
+            format: date-time
+        - name: createdBefore
+          in: query
+          description: Include orders created at or before this timestamp
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Page of the buyer's orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Orders]
+      operationId: placeOrder
+      summary: Place an order from the authenticated buyer's cart
+      description: |
+        Creates an order in CREATED status, snapshots item prices, and clears
+        the cart. The purchase activity is recorded as part of order placement.
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      summary: Get an order owned by the buyer or containing the seller's products
+      responses:
+        '200':
+          description: Order details and line items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Orders]
+      operationId: updateOrderStatus
+      summary: Cancel an order or advance its fulfillment status
+      description: |
+        Buyers may transition their own cancellable orders to CANCELLED.
+        Sellers may advance orders containing their products through
+        IN_PROCESSING, SHIPPED, and COMPLETED. Invalid transitions are rejected.
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusUpdate'
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /seller/orders:
+    get:
+      tags: [Orders]
+      operationId: listIncomingOrders
+      summary: List orders containing products from the authenticated seller
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/OrderSort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: createdAfter
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: createdBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Page of incoming orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /recommendations:
+    get:
+      tags: [Recommendations]
+      operationId: getRecommendations
+      summary: Get personalized product recommendations
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of recommended products
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Recommended active products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /activity/events:
+    post:
+      tags: [Activity]
+      operationId: recordActivityEvent
+      summary: Record a user interaction event
+      description: |
+        Records VIEW, SEARCH, ADD_TO_CART, or PURCHASE telemetry for
+        recommendations and aggregate analytics. Where applicable, product
+        views, searches, cart additions, and purchases are also recorded by
+        their corresponding operations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityEventInput'
+      responses:
+        '202':
+          description: Event accepted for processing
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /seller/analytics:
+    get:
+      tags: [Seller analytics]
+      operationId: getSellerAnalytics
+      summary: Get seller sales metrics for a date range
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Start of the inclusive reporting interval
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          description: End of the inclusive reporting interval
+          schema:
+            type: string
+            format: date
+        - name: productId
+          in: query
+          description: Restrict metrics to one seller-owned product
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Aggregated sales metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesAnalytics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /seller/analytics/insights:
+    post:
+      tags: [Seller analytics]
+      operationId: generateSellerInsights
+      summary: Generate AI sales insights and recommendations
+      description: Insights cover pricing, inventory restocking, and underperforming products.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsightsRequest'
+      responses:
+        '200':
+          description: Generated recommendations for the requested period
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesInsights'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/users:
+    get:
+      tags: [Administration, Users]
+      operationId: listUsers
+      summary: List accounts for moderation
+      description: Admin-only.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/Role'
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: createdAt,desc
+            enum: ['createdAt,asc', 'createdAt,desc', 'email,asc', 'email,desc']
+      responses:
+        '200':
+          description: Page of accounts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/sellers/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+    patch:
+      tags: [Administration, Users]
+      operationId: moderateSeller
+      summary: Suspend or reinstate a seller account
+      description: Suspending a seller also suspends their product listings.
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/SellerModerationRequest'
+      responses:
+        '200':
+          description: Seller account status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Zero-based page index
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Number of results per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ProductSort:
+      name: sort
+      in: query
+      description: Sort field and direction (field,asc or field,desc)
+      schema:
+        type: string
+        default: createdAt,desc
+        enum:
+          - title,asc
+          - title,desc
+          - price,asc
+          - price,desc
+          - createdAt,asc
+          - createdAt,desc
+          - stockQuantity,asc
+          - stockQuantity,desc
+    OrderSort:
+      name: sort
+      in: query
+      description: Sort field and direction (field,asc or field,desc)
+      schema:
+        type: string
+        default: createdAt,desc
+        enum: ['createdAt,asc', 'createdAt,desc', 'totalAmount,asc', 'totalAmount,desc']
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+  responses:
+    BadRequest:
+      description: The request is invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Authentication is missing or invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: The caller is not allowed to perform this operation
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: The requested resource does not exist
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: The request conflicts with resource state or business rules
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Role:
+      type: string
+      enum: [BUYER, SELLER, ADMIN]
+    ProductStatus:
+      type: string
+      enum: [PENDING_MODERATION, ACTIVE, SUSPENDED]
+    OrderStatus:
+      type: string
+      enum: [CREATED, IN_PROCESSING, SHIPPED, COMPLETED, CANCELLED]
+    RegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        password:
+          type: string
+          format: password
+          minLength: 8
+          writeOnly: true
+        role:
+          type: string
+          enum: [BUYER, SELLER]
+          default: BUYER
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          writeOnly: true
+    RefreshTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          writeOnly: true
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds
+          minimum: 1
+    User:
+      type: object
+      required: [id, email, role, active, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    SellerProfileInput:
+      type: object
+      additionalProperties: false
+      required: [storeName]
+      properties:
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        storeDescription:
+          type: string
+        contactInfo:
+          type: string
+    SellerProfilePatch:
+      type: object
+      additionalProperties: false
+      properties:
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        storeDescription:
+          type: string
+        contactInfo:
+          type: string
+      minProperties: 1
+    SellerProfile:
+      type: object
+      required: [id, userId, storeName, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        storeName:
+          type: string
+          maxLength: 100
+        storeDescription:
+          type: string
+        contactInfo:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ProductInput:
+      type: object
+      additionalProperties: false
+      required: [title, price, stockQuantity]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        stockQuantity:
+          type: integer
+          minimum: 0
+        imageUrl:
+          type: string
+          format: uri
+          maxLength: 255
+        categoryIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+    ProductPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        stockQuantity:
+          type: integer
+          minimum: 0
+        imageUrl:
+          type: string
+          format: uri
+          maxLength: 255
+        categoryIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+      minProperties: 1
+    Product:
+      type: object
+      required: [id, title, price, stockQuantity, status, seller, categories, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        stockQuantity:
+          type: integer
+          minimum: 0
+        imageUrl:
+          type: string
+          format: uri
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+        seller:
+          $ref: '#/components/schemas/SellerSummary'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+        createdAt:
+          type: string
+          format: date-time
+    SellerSummary:
+      type: object
+      required: [id, storeName]
+      properties:
+        id:
+          type: integer
+          format: int64
+        storeName:
+          type: string
+    ProductModerationRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+    CategoryInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        parentId:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+    CategoryPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        parentId:
+          description: Use null to move the category to the root level
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+      minProperties: 1
+    CategorySummary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+    Category:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        parentId:
+          type: [integer, 'null']
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    CategoryNode:
+      allOf:
+        - $ref: '#/components/schemas/Category'
+        - type: object
+          required: [children]
+          properties:
+            children:
+              type: array
+              items:
+                $ref: '#/components/schemas/CategoryNode'
+    AddCartItemRequest:
+      type: object
+      additionalProperties: false
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          format: int64
+          minimum: 1
+        quantity:
+          type: integer
+          minimum: 1
+    UpdateCartItemRequest:
+      type: object
+      additionalProperties: false
+      required: [quantity]
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+    Cart:
+      type: object
+      required: [id, items, totalAmount, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        totalAmount:
+          type: number
+          format: decimal
+          minimum: 0
+        updatedAt:
+          type: string
+          format: date-time
+    CartItem:
+      type: object
+      required: [id, product, quantity, subtotal]
+      properties:
+        id:
+          type: integer
+          format: int64
+        product:
+          $ref: '#/components/schemas/ProductSummary'
+        quantity:
+          type: integer
+          minimum: 1
+        subtotal:
+          type: number
+          format: decimal
+          minimum: 0
+    ProductSummary:
+      type: object
+      required: [id, title, price, stockQuantity, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        price:
+          type: number
+          format: decimal
+        stockQuantity:
+          type: integer
+        status:
+          $ref: '#/components/schemas/ProductStatus'
+        imageUrl:
+          type: string
+          format: uri
+    Order:
+      type: object
+      required: [id, status, totalAmount, items, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        totalAmount:
+          type: number
+          format: decimal
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    OrderItem:
+      type: object
+      required: [id, product, quantity, unitPrice, subtotal]
+      properties:
+        id:
+          type: integer
+          format: int64
+        product:
+          $ref: '#/components/schemas/ProductSummary'
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          format: decimal
+          minimum: 0
+          description: Unit price captured at order placement
+        subtotal:
+          type: number
+          format: decimal
+          minimum: 0
+    OrderStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+    ActivityEventInput:
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [VIEW, SEARCH, ADD_TO_CART, PURCHASE]
+        productId:
+          type: integer
+          format: int64
+          minimum: 1
+        query:
+          type: string
+          maxLength: 200
+        occurredAt:
+          type: string
+          format: date-time
+          description: Client event time; if omitted, the server records the current time
+    SalesAnalytics:
+      type: object
+      required: [from, to, revenue, unitsSold, conversionRate, cancellationRate]
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        revenue:
+          type: number
+          format: decimal
+          minimum: 0
+        unitsSold:
+          type: integer
+          minimum: 0
+        views:
+          type: integer
+          minimum: 0
+        purchases:
+          type: integer
+          minimum: 0
+        conversionRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Purchases divided by views
+        cancellationRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Cancelled orders divided by created orders
+    InsightsRequest:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        productIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+    SalesInsights:
+      type: object
+      required: [generatedAt, recommendations]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalesRecommendation'
+    SalesRecommendation:
+      type: object
+      required: [type, message]
+      properties:
+        type:
+          type: string
+          enum: [PRICING, RESTOCK, UNDERPERFORMING_PRODUCT, OTHER]
+        productId:
+          type: integer
+          format: int64
+        message:
+          type: string
+        rationale:
+          type: string
+    SellerModerationRequest:
+      type: object
+      additionalProperties: false
+      required: [active]
+      properties:
+        active:
+          type: boolean
+          description: Set false to suspend and true to reinstate the seller
+    PageMetadata:
+      type: object
+      required: [page, size, totalItems, totalPages, sort]
+      properties:
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        sort:
+          type: array
+          items:
+            type: string
+          description: Applied sort fields and directions
+    ProductPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+    CategoryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+    OrderPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+    UserPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+    Problem:
+      type: object
+      description: RFC 9457 problem details
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        code:
+          type: string

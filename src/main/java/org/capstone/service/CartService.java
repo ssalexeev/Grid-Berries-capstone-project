@@ -5,11 +5,10 @@ import org.capstone.domain.Cart;
 import org.capstone.domain.CartItem;
 import org.capstone.domain.Product;
 import org.capstone.domain.User;
-import org.capstone.domain.enums.MetricEventType;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.repository.jdbc.CartRepository;
-import org.capstone.repository.jdbc.ProductRepository;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.CartRepository;
+import org.capstone.repository.jpa.ProductRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +20,6 @@ public class CartService {
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
-    private final UserMetricEventService metricEventService;
 
     @Transactional
     public Cart getCart(Long userId) {
@@ -35,7 +33,7 @@ public class CartService {
         Product product = getProduct(productId);
         requireAvailable(product);
 
-        CartItem existingItem = cart.getItems().stream()
+        CartItem existingItem = cart.getCartItems().stream()
                 .filter(item -> item.getProduct() != null
                         && productId.equals(item.getProduct().getId()))
                 .findFirst()
@@ -46,12 +44,12 @@ public class CartService {
         requireStock(product, resultingQuantity);
 
         if (existingItem == null) {
-            cart.getItems().add(
+            cart.getCartItems().add(
                     CartItem.builder()
-                            .cartId(cart.getId())
+                            .cart(cart)
                             .product(product)
                             .quantity(quantity)
-                            .addedAt(LocalDateTime.now())
+                            .createdAt(LocalDateTime.now())
                             .build()
             );
         } else {
@@ -63,7 +61,6 @@ public class CartService {
 
         Cart saved = cartRepository.save(cart);
 
-        metricEventService.recordEvent(MetricEventType.ADD_TO_CART, userId, productId, null, null);
         return saved;
 
     }
@@ -87,7 +84,7 @@ public class CartService {
     public Cart removeItem(Long userId, Long cartItemId) {
         Cart cart = getCartOrFail(userId);
         findCartItem(cart, cartItemId);
-        cart.getItems().removeIf(item -> cartItemId.equals(item.getId()));
+        cart.getCartItems().removeIf(item -> cartItemId.equals(item.getId()));
         cart.setUpdatedAt(LocalDateTime.now());
         cart.calculateTotal();
         return cartRepository.save(cart);
@@ -96,7 +93,7 @@ public class CartService {
     @Transactional
     public Cart clearCart(Long userId) {
         Cart cart = getCartOrFail(userId);
-        cart.getItems().clear();
+        cart.getCartItems().clear();
         cart.setUpdatedAt(LocalDateTime.now());
         cart.calculateTotal();
         return cartRepository.save(cart);
@@ -137,7 +134,7 @@ public class CartService {
         if (cartItemId == null) {
             throw new IllegalArgumentException("Cart item ID cannot be null.");
         }
-        return cart.getItems().stream()
+        return cart.getCartItems().stream()
                 .filter(item -> cartItemId.equals(item.getId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(

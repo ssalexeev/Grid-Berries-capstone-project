@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -51,17 +52,28 @@ public class JdbcUtil {
     }
 
     public long insertAndReturnId(String query, Object... args) {
-        return findOne(query, resultSet -> {
-            try {
-                long id = resultSet.getLong(1);
-                if (resultSet.wasNull()) {
-                    throw new IllegalStateException("Insert returned a null ID");
+        Connection connection = getConnection();
+        try (PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            bindParameters(statement, args);
+            int updatedRows = statement.executeUpdate();
+            if (updatedRows != 1) {
+                throw new IllegalStateException("Insert affected " + updatedRows + " rows: " + query);
+            }
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (!generatedKeys.next()) {
+                    throw new IllegalStateException("Insert did not return a generated ID: " + query);
+                }
+                long id = generatedKeys.getLong(1);
+                if (generatedKeys.wasNull()) {
+                    throw new IllegalStateException("Insert returned a null ID: " + query);
                 }
                 return id;
-            } catch (SQLException e) {
-                throw new RuntimeException("Failed to read generated ID", e);
             }
-        }, args).orElseThrow(() -> new IllegalStateException("Insert did not return an ID"));
+        } catch (SQLException e) {
+            throw new RuntimeException("Error executing database insert: " + query, e);
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource);
+        }
     }
 
     public void execute(String query, Consumer<PreparedStatement> consumer) {

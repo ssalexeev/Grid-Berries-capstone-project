@@ -5,8 +5,8 @@ import org.capstone.domain.Product;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.ProductStatus;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.SellerProfileRepository;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.SellerProfileRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
