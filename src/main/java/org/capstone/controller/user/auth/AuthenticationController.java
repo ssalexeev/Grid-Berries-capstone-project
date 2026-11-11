@@ -2,9 +2,11 @@ package org.capstone.controller.user.auth;
 
 
 import lombok.RequiredArgsConstructor;
-import org.capstone.dto.in.UserAuthRequest;
-import org.capstone.dto.in.UserRegistrationRequest;
+import org.capstone.domain.User;
+import org.capstone.dto.request.UserAuthRequest;
+import org.capstone.dto.request.UserRegistrationRequest;
 import org.capstone.service.UserService;
+import org.capstone.util.mapper.user.UserMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -18,10 +20,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthenticationController {
     private final UserService userService;
+    private final UserMapper userMapper;
+
+    //todo finish implementing of JWT auth logic with refresh tokens table and other parts
 
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody @Validated UserRegistrationRequest registrationRequest){
-        userService.registerUser(registrationRequest);
+        User user = userMapper.toEntity(registrationRequest);
+        userService.registerUser(user);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -33,12 +39,12 @@ public class AuthenticationController {
         return null;
     }
 
-    @PostMapping("/login")
+    @PostMapping("/refresh")
     public ResponseEntity<String> refreshToken(@RequestBody @Validated UserRegistrationRequest registrationRequest){
         return null;
     }
-    @PostMapping("/login")
-    public ResponseEntity<String> logout(@RequestBody @Validated UserRegistrationRequest registrationRequest){
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(){
         return null;
     }
 }

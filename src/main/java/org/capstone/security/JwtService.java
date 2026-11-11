@@ -27,10 +27,9 @@ public class JwtService {
                 .subject(email)
                 .issuer(issuer)
                 .claim("user_id", user.getId())
-                .claim("authorities", List.of(user.getRole().toString()))
+                .claim("authority", user.getRole().toString())
                 .expiresAt(Instant.now().plus(ttl))
                 .build();
         return jwtEncoder.encode(JwtEncoderParameters.from(claimsSet)).getTokenValue();
-
     }
 }
