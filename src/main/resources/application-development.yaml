@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: GBerries
   datasource:
     url: jdbc:postgresql://localhost:5432/mydatabase
     username: myuser
@@ -8,3 +10,11 @@ spring:
   liquibase:
     enabled: true
     change-log: db/changelog/db.changelog-master.xml
+
+
+
+jwt:
+
+  private-key: classpath:${JWT_PRIVATE_KEY:jwt/app.key}
+  public-key: classpath:${JWT_PUBLIC_KEY:jwt/app.pub}
+  ttl: ${JWT_TTL:120m}
