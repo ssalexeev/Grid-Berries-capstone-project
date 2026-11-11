@@ -2,7 +2,7 @@ package org.capstone.util.validation.user.validator;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import org.capstone.dto.in.UserRegistrationRequest;
+import org.capstone.dto.request.UserRegistrationRequest;
 import org.capstone.util.validation.user.annotation.PasswordMatch;
 import org.springframework.stereotype.Component;
 

@@ -12,7 +12,7 @@ public class PasswordMapper {
 
 
     @Named("encodePassword")
-    public String encode(String rawPassword){
+    public String encodePassword(String rawPassword){
         return passwordEncoder.encode(rawPassword);
     }
 }
