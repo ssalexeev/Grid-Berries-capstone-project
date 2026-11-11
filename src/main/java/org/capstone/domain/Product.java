@@ -55,7 +55,8 @@ public class Product {
 
     @Column(name = "status", nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
-    private ProductStatus status;
+    @Builder.Default
+    private ProductStatus status = ProductStatus.PENDING_MODERATION;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "seller_profile_id", nullable = false)

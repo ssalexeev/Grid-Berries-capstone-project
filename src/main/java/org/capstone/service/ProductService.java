@@ -6,9 +6,15 @@ import org.capstone.domain.Product;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.enums.ProductStatus;
 import org.capstone.domain.enums.Role;
+import org.capstone.service.search.ProductSearchCriteria;
+import org.capstone.dto.response.ProductResponse;
 import org.capstone.repository.jpa.CategoryRepository;
 import org.capstone.repository.jpa.ProductRepository;
 import org.capstone.repository.jpa.SellerProfileRepository;
+import org.capstone.service.search.ProductSpecifications;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +32,16 @@ public class ProductService {
     private final SellerProfileRepository sellerProfileRepository;
     private final CategoryRepository categoryRepository;
 
+
+
+    public Slice<Product> getProductsSlice(ProductSearchCriteria criteria, Pageable pageable){
+        Specification<Product> specification = ProductSpecifications.withFilters(criteria);
+
+        return productRepository.findBy(specification, pageable);
+    }
+
     @Transactional
     public Product createProduct(Long sellerProfileId, Product product) {
-        validateProduct(product);
         SellerProfile seller = getSellerProfile(sellerProfileId);
 
         product.setId(null);
@@ -41,13 +54,12 @@ public class ProductService {
     }
 
     @Transactional
-    public Product updateProduct(Long sellerProfileId, Product changes) {
+    public Product updateProduct(Long sellerProfileId,Long  productId, Product changes) {
         if (changes == null || changes.getId() == null) {
             throw new IllegalArgumentException("Product and product ID are required.");
         }
-        Product existing = getProductById(changes.getId());
+        Product existing = getProductById(productId);
         requireSellerOwnership(existing, sellerProfileId);
-        validateProduct(changes);
 
         existing.setTitle(changes.getTitle());
         existing.setDescription(changes.getDescription());
@@ -60,6 +72,37 @@ public class ProductService {
         return productRepository.save(existing);
     }
 
+    @Transactional
+    public Product patchProduct(Long sellerProfileId, Long productId, Product patchProduct) {
+        if (patchProduct == null || patchProduct.getId() == null) {
+            throw new IllegalArgumentException("Product and product ID are required.");
+        }
+        Product existing = getProductById(productId);
+        requireSellerOwnership(existing, sellerProfileId);
+
+        if (patchProduct.getTitle() != null) {
+            existing.setTitle(patchProduct.getTitle());
+        }
+        if (patchProduct.getPrice() != null) {
+            existing.setPrice(patchProduct.getPrice());
+        }
+        if (patchProduct.getStockQuantity() != null) {
+            existing.setStockQuantity(patchProduct.getStockQuantity());
+        }
+        if (patchProduct.getStatus() != null) {
+            existing.setStatus(patchProduct.getStatus());
+        }
+        if (patchProduct.getImageUrl() != null) {
+            existing.setImageUrl(patchProduct.getImageUrl());
+        }
+
+        if (getCategories(patchProduct) != null) {
+            List<Category> categories = categoryRepository.findAllById(getCategories(patchProduct));
+            existing.setCategories(categories);
+        }
+
+        return productRepository.save(existing);
+    }
 
     public Product getProductById(Long productId) {
         if (productId == null) {
@@ -139,21 +182,6 @@ public class ProductService {
         for (Product product : productRepository.findAllBySellerProfileId(sellerProfileId)) {
             product.setStatus(ProductStatus.SUSPENDED);
             productRepository.save(product);
-        }
-    }
-
-    private void validateProduct(Product product) {
-        if (product == null) {
-            throw new IllegalArgumentException("Product cannot be null.");
-        }
-        if (product.getTitle() == null || product.getTitle().isBlank()) {
-            throw new IllegalArgumentException("Product title cannot be empty.");
-        }
-        if (product.getPrice() == null || product.getPrice().signum() < 0) {
-            throw new IllegalArgumentException("Product price must be zero or greater.");
-        }
-        if (product.getStockQuantity() == null || product.getStockQuantity() < 0) {
-            throw new IllegalArgumentException("Product stock cannot be negative or null.");
         }
     }
 
@@ -240,4 +268,6 @@ public class ProductService {
         }
         return false;
     }
+
+
 }

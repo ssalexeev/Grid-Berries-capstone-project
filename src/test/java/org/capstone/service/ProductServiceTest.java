@@ -89,7 +89,7 @@ class ProductServiceTest {
         when(sellerProfileRepository.findById(9L))
                 .thenReturn(Optional.of(sellerProfile(9L)));
 
-        assertThrows(IllegalStateException.class, () -> productService.updateProduct(9L, validProductWithId(5L)));
+        assertThrows(IllegalStateException.class, () -> productService.updateProduct(9L,5L,validProductWithId(5L)));
     }
 
     private Product validProduct() {
