@@ -41,30 +41,6 @@ class UserServiceTest {
     class RegisterUserTests {
 
         @Test
-        void registerUser_WhenEmailIsNullOrEmptyOrBlank_ThrowsIllegalArgumentException() {
-            String invalidEmail = "";
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> userService.registerUser(invalidEmail, "hashedPass123", Role.BUYER)
-            );
-
-            assertEquals("Email cannot be empty.", ex.getMessage());
-            verifyNoInteractions(userRepository);
-        }
-
-       @Test
-        void registerUser_WhenPasswordHashIsNullOrEmptyOrBlank_ThrowsIllegalArgumentException() {
-            String invalidPassword = "";
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> userService.registerUser("user@example.com", invalidPassword, Role.BUYER)
-            );
-
-            assertEquals("Password cannot be empty.", ex.getMessage());
-            verifyNoInteractions(userRepository);
-        }
-
-        @Test
         void registerUser_WhenEmailAlreadyExists_ThrowsIllegalStateException() {
             String existingEmail = "existing@example.com";
             User existingUser = User.builder().email(existingEmail).build();
@@ -73,7 +49,7 @@ class UserServiceTest {
 
             IllegalStateException ex = assertThrows(
                     IllegalStateException.class,
-                    () -> userService.registerUser("EXISTING@example.com", "hash123", Role.BUYER)
+                    () -> userService.registerUser(User.builder().email("EXISTING@example.com").passwordHash("pshasdss").build())
             );
 
             assertEquals("User with email EXISTING@example.com already exists.", ex.getMessage());
@@ -90,7 +66,13 @@ class UserServiceTest {
             when(userRepository.findAll()).thenReturn(List.of());
             when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            User result = userService.registerUser(email, passwordHash, role);
+            User result = userService.registerUser(
+                    User.builder()
+                            .email(email)
+                            .passwordHash(passwordHash)
+                            .role(role)
+                            .build()
+            );
 
             assertNotNull(result);
             assertEquals(email, result.getEmail());
@@ -110,7 +92,10 @@ class UserServiceTest {
             when(userRepository.findAll()).thenReturn(List.of());
             when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            User result = userService.registerUser(email, passwordHash, null);
+            User result = userService.registerUser(User.builder()
+                    .email(email)
+                    .passwordHash(passwordHash)
+                    .build());
 
             assertEquals(Role.BUYER, result.getRole());
             verify(userRepository, times(1)).save(any(User.class));

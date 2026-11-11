@@ -4,35 +4,29 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.dto.in.UserRegistrationRequest;
-import org.capstone.dto.out.UserRegistrationResponse;
 import org.capstone.repository.jpa.UserRepository;
 import org.capstone.util.exception.UserAlreadyExistsException;
-import org.capstone.util.mapper.user.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
 
 
     //todo: add email index and optimize query
     @Transactional
-    public UserRegistrationResponse registerUser(UserRegistrationRequest userRegistrationRequest) {
-        boolean emailExists = userRepository.existsByEmailIgnoreCase(userRegistrationRequest.getEmail());
+    public User registerUser(User user) {
+        boolean emailExists = userRepository.existsByEmailIgnoreCase(user.getEmail());
         if (emailExists) {
-            throw new UserAlreadyExistsException("User with email " + userRegistrationRequest.getEmail() + " already exists.");
+            throw new UserAlreadyExistsException("User with email " + user.getEmail() + " already exists.");
         }
 
-        User savedUser = userRepository.save(userMapper.toEntity(userRegistrationRequest));
 
-        return userMapper.toResponse(savedUser);
+        return userRepository.save(user);
     }
 
     public User authenticate(String email, String passwordHash) {

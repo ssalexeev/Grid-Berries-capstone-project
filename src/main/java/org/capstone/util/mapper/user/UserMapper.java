@@ -1,13 +1,13 @@
 package org.capstone.util.mapper.user;
 
 import org.capstone.domain.User;
-import org.capstone.dto.in.UserRegistrationRequest;
-import org.capstone.dto.out.UserRegistrationResponse;
+import org.capstone.dto.request.UserRegistrationRequest;
+import org.capstone.dto.response.UserRegistrationResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = PasswordMapper.class)
 public interface UserMapper {
     UserMapper INSTANCE = Mappers.getMapper(UserMapper.class);
 
@@ -19,7 +19,6 @@ public interface UserMapper {
     )
     @Mapping(target = "isActive", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
-
     User toEntity(UserRegistrationRequest userRegistrationRequest);
 
 

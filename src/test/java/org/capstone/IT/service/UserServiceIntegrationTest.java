@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -32,7 +31,11 @@ public class UserServiceIntegrationTest extends AbstractIntegrationTest {
         String email = "john.doe@example.com";
         String passwordHash = "argon2id$hashed_secret";
 
-        User savedUser = userService.registerUser(email, passwordHash, null);
+        User savedUser = userService.registerUser(User.builder()
+                .email(email)
+                .passwordHash(passwordHash)
+                .build()
+        );
 
         assertThat(savedUser.getId()).isNotNull();
         assertThat(savedUser.getEmail()).isEqualTo(email);
@@ -105,6 +108,9 @@ public class UserServiceIntegrationTest extends AbstractIntegrationTest {
     User getRegisteredUser() {
         String email = "john.doe@example.com";
         String passwordHash = "argon2id$hashed_secret";
-        return userService.registerUser(email, passwordHash, null);
+        return userService.registerUser(User.builder()
+                .email(email)
+                .passwordHash(passwordHash)
+                .build());
     }
 }

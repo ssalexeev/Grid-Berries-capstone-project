@@ -1,7 +1,7 @@
 package org.capstone.security;
 
-import com.example.bankcards.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.capstone.repository.jpa.UserRepository;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,10 +13,9 @@ import org.springframework.stereotype.Service;
 public class JpaUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
-
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findUserByEmail(email).map(user ->
+        return userRepository.findByEmail(email).map(user ->
                 User.builder()
                         .username(user.getEmail())
                         .password(user.getPasswordHash())

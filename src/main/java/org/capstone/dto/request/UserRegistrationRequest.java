@@ -1,4 +1,4 @@
-package org.capstone.dto.in;
+package org.capstone.dto.request;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -6,8 +6,10 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.capstone.domain.enums.Role;
 import org.capstone.util.validation.user.annotation.PasswordMatch;
@@ -15,6 +17,8 @@ import org.capstone.util.validation.user.annotation.PasswordMatch;
 @Getter
 @Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @PasswordMatch
 public class UserRegistrationRequest {
 
@@ -33,6 +37,7 @@ public class UserRegistrationRequest {
     private String passwordConfirm;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @Builder.Default
     private boolean passwordsIsMatch = false;
 
     @Builder.Default
