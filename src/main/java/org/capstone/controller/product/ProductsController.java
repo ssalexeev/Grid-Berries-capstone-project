@@ -31,7 +31,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -46,14 +45,15 @@ public class ProductsController {
     public ResponseEntity<SliceResponse<ProductResponse>> getProducts(
             @ModelAttribute ProductSearchCriteria criteria,
             @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable) {
-        Slice<ProductResponse> slice = productService.getProductsSlice(criteria, pageable).map(productMapper::toResponse);
+        Slice<ProductResponse> slice = productService.getProductsSlice(criteria, pageable)
+                .map(productMapper::toResponse);
 
         return ResponseEntity.ok(new SliceResponse<>(slice));
     }
 
     @PostMapping
     public ResponseEntity<?> createProduct(@Validated @RequestBody ProductCreateRequest request) {
-        Long sellerId = authenticationService.getCurrentSellerId();
+        Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         Product productEntity = productMapper.toEntity(request);
 
         Product createProduct = productService.createProduct(sellerId, productEntity);
@@ -78,14 +78,14 @@ public class ProductsController {
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long productId, @Validated @RequestBody ProductCreateRequest request) {
         Product product = productMapper.toEntity(request);
 
-        Product updateProduct = productService.updateProduct(authenticationService.getCurrentSellerId(), productId, product);
+        Product updateProduct = productService.updateProduct(authenticationService.getSellerIdFromAuthenticationContext(), productId, product);
 
         return ResponseEntity.ok(productMapper.toResponse(updateProduct));
     }
 
     @PatchMapping("/{productId}")
     public ResponseEntity<ProductResponse> patchProduct(@PathVariable Long productId, @Validated @RequestBody ProductCreateRequest request) {
-        Long sellerId = authenticationService.getCurrentSellerId();
+        Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         Product product = productMapper.toEntity(request);
 
         Product patchProduct = productService.patchProduct(sellerId, productId, product);
@@ -95,7 +95,7 @@ public class ProductsController {
 
     @DeleteMapping("/{productId}")
     public ResponseEntity<String> deleteProduct(@PathVariable Long productId) {
-        Long sellerId = authenticationService.getCurrentSellerId();
+        Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         productService.deleteProduct(sellerId, productId);
 
         return ResponseEntity
@@ -105,7 +105,7 @@ public class ProductsController {
 
     @PatchMapping("/{productId}/moderation")
     public ResponseEntity<ProductResponse> patchProductStatus(@PathVariable Long productId, @RequestBody ProductModerateStatusRequest request) {
-        Product product = productService.moderateProduct(productId, request.getStatus());
+        Product product = productService.moderateProductStatus(productId, request.getStatus());
 
         return ResponseEntity.ok(productMapper.toResponse(product));
     }

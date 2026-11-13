@@ -9,6 +9,7 @@ import org.capstone.domain.enums.ProductStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -28,7 +29,7 @@ public class ProductResponse {
     private Seller seller;
     private List<Category> categories;
 
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
 
     @Getter
@@ -38,7 +39,7 @@ public class ProductResponse {
     @AllArgsConstructor
     public static class Seller{
         private Long id;
-        private String name;
+        private String storeName;
 
     }
 
