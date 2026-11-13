@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.capstone.security.JwtService;
+import org.capstone.service.SellerProfileService;
 import org.capstone.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +39,7 @@ public class JwtConfig {
     private Duration ttl;
 
     private final UserService userService;
+    private final SellerProfileService sellerProfileService;
 
     @Bean
     public JwtEncoder jwtEncoder(){
@@ -67,7 +69,7 @@ public class JwtConfig {
     public JwtService jwtService
             (@Value("${spring.application.name}") final String appName,
              JwtDecoder jwtDecoder){
-        return new JwtService(appName, ttl, jwtEncoder(), userService);
+        return new JwtService(appName, ttl, jwtEncoder(), userService, sellerProfileService);
     }
 }
 

@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.User;
 import org.capstone.dto.request.UserAuthRequest;
 import org.capstone.dto.request.UserRegistrationRequest;
+import org.capstone.dto.response.user.UserTokenAuthenticationResponse;
+import org.capstone.security.AuthenticationService;
 import org.capstone.service.UserService;
 import org.capstone.util.mapper.user.UserMapper;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthenticationController {
     private final UserService userService;
     private final UserMapper userMapper;
+    private final AuthenticationService authenticationService;
 
     //todo finish implementing of JWT auth logic with refresh tokens table and other parts
 
@@ -35,8 +38,9 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody @Validated UserAuthRequest authRequest){
-        return null;
+    public ResponseEntity<UserTokenAuthenticationResponse> login(@RequestBody @Validated UserAuthRequest authRequest){
+        UserTokenAuthenticationResponse authenticate = authenticationService.authenticate(authRequest);
+        return ResponseEntity.ok(authenticate);
     }
 
     @PostMapping("/refresh")

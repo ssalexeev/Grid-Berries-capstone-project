@@ -35,11 +35,11 @@ public class AdminModerationService {
     }
 
     public Product approveProduct(Long productId) {
-        return productService.moderateProduct(productId, ProductStatus.ACTIVE);
+        return productService.moderateProductStatus(productId, ProductStatus.ACTIVE);
     }
 
     public Product suspendProduct(Long productId) {
-        return productService.moderateProduct(productId, ProductStatus.SUSPENDED);
+        return productService.moderateProductStatus(productId, ProductStatus.SUSPENDED);
     }
 
     private User getSeller(Long userId) {
