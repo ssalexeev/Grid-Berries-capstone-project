@@ -6,6 +6,7 @@ import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jpa.UserRepository;
 import org.capstone.util.exception.UserAlreadyExistsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
 
     //todo: add email index and optimize query
@@ -67,10 +69,31 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public void deactivateUser(Long id) {
-        User user = getUserById(id);
-        user.setIsActive(false);
-        userRepository.save(user);
+    @Transactional
+    public User patchUser(Long userId, User user) {
+        User existing = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+
+        if (user.getEmail() != null && !user.getEmail().equalsIgnoreCase(existing.getEmail())) {
+            if (userRepository.existsByEmail(user.getEmail())) {
+                throw new IllegalArgumentException("Email is already in use: " + user.getEmail());
+            }
+            existing.setEmail(user.getEmail().trim());
+        }
+
+        if (user.getIsActive() != null) {
+            existing.setIsActive(user.getIsActive());
+        }
+
+        if (user.getPasswordHash() != null){
+            existing.setPasswordHash(user.getPasswordHash());
+        }
+
+        if (user.getRole() != null) {
+            existing.setRole(user.getRole());
+        }
+
+        return userRepository.save(existing);
     }
 
     public void deleteUser(Long id) {
