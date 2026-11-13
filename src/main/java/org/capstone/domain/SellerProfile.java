@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,16 +27,17 @@ import java.time.LocalDateTime;
 @Table(name = "seller_profile")
 public class SellerProfile {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sellerProfileSeqGen")
+    @SequenceGenerator(name = "sellerProfileSeqGen", sequenceName = "seller_profile_id_seq")
     private Long id;
 
-    @Column(name = "store_name", nullable = false, length = 100)
+    @Column(name = "store_name")
     private String storeName;
 
-    @Column(name = "store_description", columnDefinition = "text")
+    @Column(name = "store_description")
     private String storeDescription;
 
-    @Column(name = "contact_info", columnDefinition = "text")
+    @Column(name = "contact_info")
     private String contactInfo;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
@@ -43,6 +45,6 @@ public class SellerProfile {
     private User user;
 
     @Builder.Default
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 }

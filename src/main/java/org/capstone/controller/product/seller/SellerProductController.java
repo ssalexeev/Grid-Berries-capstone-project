@@ -24,7 +24,7 @@ public class SellerProductController {
 
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getProducts(){
-        Long sellerId = authenticationService.getCurrentSellerId();
+        Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         List<Product> products = productService.getProductsBySeller(sellerId);
 
         return ResponseEntity.ok(products.stream().map(productMapper::toResponse).toList());

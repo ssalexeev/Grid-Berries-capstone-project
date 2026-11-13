@@ -1,11 +1,14 @@
 package org.capstone.service;
 
+import jakarta.persistence.EntityExistsException;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jpa.SellerProfileRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -15,37 +18,26 @@ import java.util.List;
 public class SellerProfileService {
     private final SellerProfileRepository sellerRepository;
 
-    public SellerProfile createProfile(User user, String storeName, String description, String contactInfo) {
-        if (user == null || user.getId() == null) {
-            throw new IllegalArgumentException("SellerProfile must be associated with a valid User.");
-        }
+    @Transactional
+    public SellerProfile createProfile(User user, SellerProfile sellerProfile) {
         if (user.getRole() != Role.SELLER) {
             throw new IllegalStateException("Only users with SELLER role can create a seller profile.");
         }
         if (!Boolean.TRUE.equals(user.getIsActive())) {
             throw new IllegalStateException("Inactive users cannot create a seller profile.");
         }
-        if (storeName == null || storeName.isBlank()) {
-            throw new IllegalArgumentException("Store name cannot be empty.");
+        if (sellerRepository.existsSellerProfileByUser_Id(user.getId())) {
+            throw new EntityExistsException("Seller profile already exists for user ID: " + user.getId());
         }
 
-        if (sellerRepository.findByUserId(user.getId()).isPresent()) {
-            throw new IllegalStateException("Seller profile already exists for user ID: " + user.getId());
-        }
-
-        SellerProfile sellerProfile = SellerProfile.builder()
-                .storeName(storeName)
-                .storeDescription(description)
-                .contactInfo(contactInfo)
-                .user(user)
-                .build();
+        sellerProfile.setUser(user);
 
         return sellerRepository.save(sellerProfile);
     }
 
     public SellerProfile getProfileById(Long id) {
         return sellerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Seller profile not found with ID: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Seller profile not found with ID: " + id));
     }
 
     public List<SellerProfile> getAllProfiles() {
@@ -61,17 +53,17 @@ public class SellerProfileService {
                 .orElseThrow(() -> new IllegalArgumentException("Seller profile not found for user ID: " + userId));
     }
 
-    public SellerProfile updateProfile(Long profileId, String storeName, String description, String contactInfo) {
+    public SellerProfile updateProfile(Long profileId, SellerProfile profile) {
         SellerProfile existingProfile = getProfileById(profileId);
 
-        if (storeName != null && !storeName.isBlank()) {
-            existingProfile.setStoreName(storeName);
+        if (profile.getStoreName() != null) {
+            existingProfile.setStoreName(profile.getStoreName());
         }
-        if (description != null) {
-            existingProfile.setStoreDescription(description);
+        if (profile.getStoreDescription() != null) {
+            existingProfile.setStoreDescription(profile.getStoreDescription());
         }
-        if (contactInfo != null) {
-            existingProfile.setContactInfo(contactInfo);
+        if (profile.getContactInfo() != null) {
+            existingProfile.setContactInfo(profile.getContactInfo());
         }
 
         return sellerRepository.save(existingProfile);
@@ -81,4 +73,7 @@ public class SellerProfileService {
         SellerProfile profile = getProfileById(id);
         sellerRepository.delete(profile);
     }
+
+
+
 }
