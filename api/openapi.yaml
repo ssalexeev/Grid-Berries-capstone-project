@@ -374,7 +374,7 @@ paths:
       - $ref: '#/components/parameters/ProductId'
     patch:
       tags: [Administration, Products]
-      operationId: moderateProduct
+      operationId: moderateProductStatus
       summary: Approve or suspend a product listing
       description: Admin-only moderation. A product can be approved or suspended.
       requestBody:

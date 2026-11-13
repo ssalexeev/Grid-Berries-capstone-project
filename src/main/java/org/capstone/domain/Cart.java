@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,7 +32,8 @@ import java.util.List;
 @Table(name = "cart")
 public class Cart {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "cartSeqGen")
+    @SequenceGenerator(name = "cartSeqGen", sequenceName = "cart_id_seq")
     private Long id;
 
     @Builder.Default

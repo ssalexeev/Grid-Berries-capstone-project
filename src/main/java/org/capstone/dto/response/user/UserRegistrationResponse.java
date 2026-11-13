@@ -1,17 +1,18 @@
-package org.capstone.dto.response;
-
+package org.capstone.dto.response.user;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.capstone.domain.enums.Role;
 
-@Builder
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileResponse {
+public class UserRegistrationResponse {
     private String email;
+    private Role role;
 }

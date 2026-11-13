@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     @Query("""
@@ -25,4 +26,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
             order by category.id
             """)
     List<Category> findByProductId(@Param("productId") Long productId);
+
+
+    Set<Category> findAllById(Long id);
 }

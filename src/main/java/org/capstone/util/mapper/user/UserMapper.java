@@ -2,7 +2,7 @@ package org.capstone.util.mapper.user;
 
 import org.capstone.domain.User;
 import org.capstone.dto.request.UserRegistrationRequest;
-import org.capstone.dto.response.UserRegistrationResponse;
+import org.capstone.dto.response.user.UserRegistrationResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;

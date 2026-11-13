@@ -4,6 +4,7 @@ package org.capstone.config.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,7 +25,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
     private final Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationTokenConverter;
 
-    //todo : configure security permissions
+    /*//todo : configure security permissions
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
         return http
@@ -38,6 +39,25 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .oauth2ResourceServer(server -> server
+                        .jwt(jwt -> jwt
+                                .jwtAuthenticationConverter(jwtAuthenticationTokenConverter)
+                        )
+                        .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                        .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
+                )
+                .build();
+    }*/
+
+    @Bean
+    public SecurityFilterChain testSecurityFilterChain(final HttpSecurity http) throws Exception {
+        return http
+                .csrf(AbstractHttpConfigurer::disable)
+                //.cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2ResourceServer(server -> server

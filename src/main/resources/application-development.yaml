@@ -1,15 +1,26 @@
 spring:
   application:
     name: GBerries
+
+
   datasource:
     url: jdbc:postgresql://localhost:5432/mydatabase
     username: myuser
     password: mypassword
     driver-class-name: org.postgresql.Driver
-
   liquibase:
     enabled: true
     change-log: db/changelog/db.changelog-master.xml
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 25
+
 
 
 
@@ -18,3 +29,6 @@ jwt:
   private-key: classpath:${JWT_PRIVATE_KEY:jwt/app.key}
   public-key: classpath:${JWT_PUBLIC_KEY:jwt/app.pub}
   ttl: ${JWT_TTL:120m}
+logging:
+  level:
+    web: debug
