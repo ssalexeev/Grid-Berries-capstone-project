@@ -3,7 +3,7 @@ package org.capstone.controller.product;
 
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Product;
-import org.capstone.dto.request.product.ProductCreateRequest;
+import org.capstone.dto.request.product.ProductRequest;
 import org.capstone.dto.request.product.ProductModerateStatusRequest;
 import org.capstone.dto.response.ProductResponse;
 import org.capstone.dto.response.SliceResponse;
@@ -52,7 +52,7 @@ public class ProductsController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createProduct(@Validated @RequestBody ProductCreateRequest request) {
+    public ResponseEntity<?> createProduct(@Validated @RequestBody ProductRequest request) {
         Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         Product productEntity = productMapper.toEntity(request);
 
@@ -75,7 +75,7 @@ public class ProductsController {
     }
 
     @PutMapping("/{productId}")
-    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long productId, @Validated @RequestBody ProductCreateRequest request) {
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long productId, @Validated @RequestBody ProductRequest request) {
         Product product = productMapper.toEntity(request);
 
         Product updateProduct = productService.updateProduct(authenticationService.getSellerIdFromAuthenticationContext(), productId, product);
@@ -84,11 +84,11 @@ public class ProductsController {
     }
 
     @PatchMapping("/{productId}")
-    public ResponseEntity<ProductResponse> patchProduct(@PathVariable Long productId, @Validated @RequestBody ProductCreateRequest request) {
+    public ResponseEntity<ProductResponse> patchProduct(@PathVariable Long productId, @Validated @RequestBody ProductRequest request) {
         Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         Product product = productMapper.toEntity(request);
 
-        Product patchProduct = productService.patchProduct(sellerId, productId, product);
+        Product patchProduct = productService.patchProduct(sellerId, productId, product, false);
 
         return ResponseEntity.ok(productMapper.toResponse(patchProduct));
     }

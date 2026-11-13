@@ -67,9 +67,12 @@ public class ProductService {
     }
 
     @Transactional
-    public Product patchProduct(Long sellerProfileId, Long productId, Product patchProduct) {
+    public Product patchProduct(Long sellerProfileId, Long productId, Product patchProduct, boolean isAdmin) {
         Product existing = getProductById(productId);
-        requireSellerOwnership(existing, sellerProfileId);
+
+        if (!isAdmin) {
+            requireSellerOwnership(existing, sellerProfileId);
+        }
 
         if (patchProduct.getTitle() != null) {
             existing.setTitle(patchProduct.getTitle());

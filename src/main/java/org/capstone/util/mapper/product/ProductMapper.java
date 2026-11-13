@@ -2,7 +2,7 @@ package org.capstone.util.mapper.product;
 
 import org.capstone.domain.Category;
 import org.capstone.domain.Product;
-import org.capstone.dto.request.product.ProductCreateRequest;
+import org.capstone.dto.request.product.ProductRequest;
 import org.capstone.dto.response.ProductResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -19,7 +19,7 @@ public interface ProductMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "sellerProfile", ignore = true)
     @Mapping(target = "categories", source = "categoryIds")
-    Product toEntity(ProductCreateRequest createRequest);
+    Product toEntity(ProductRequest createRequest);
 
     @Mapping(target = "seller.id", source = "sellerProfile.id")
     @Mapping(target = "seller.storeName", source = "sellerProfile.storeName")
