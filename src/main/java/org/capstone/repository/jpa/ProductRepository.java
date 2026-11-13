@@ -17,8 +17,7 @@ import java.util.List;
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
     List<Product> findAllBySellerProfileId(Long sellerProfileId);
 
-    @EntityGraph(attributePaths = {"seller", "categories"})
-    Slice<Product> findBy(Specification<Product> specification, Pageable pageable);
+
 
     @Modifying
     @Transactional
