@@ -50,11 +50,4 @@ public class CartItem {
     @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    public BigDecimal getSubtotal() {
-        if (product == null || product.getPrice() == null || quantity == null) {
-            return BigDecimal.ZERO;
-        }
-        return product.getPrice().multiply(BigDecimal.valueOf(quantity));
-    }
 }

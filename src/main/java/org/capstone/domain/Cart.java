@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -55,10 +56,36 @@ public class Cart {
     )
     private List<CartItem> cartItems = new ArrayList<>();
 
-    public BigDecimal calculateTotal() {
-        totalAmount = cartItems.stream()
-                .map(CartItem::getSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return totalAmount;
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void calculateTotalAmount() {
+        if (!this.cartItems.isEmpty()) {
+            this.totalAmount = this.cartItems.stream()
+                    .map(item -> item.getProduct().getPrice()
+                            .multiply(BigDecimal.valueOf(item.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void addItem(CartItem item) {
+        this.cartItems.add(item);
+        item.setCart(this);
+        calculateTotalAmount();
+    }
+
+    public void removeItem(CartItem item) {
+        this.cartItems.remove(item);
+        item.setCart(null);
+        calculateTotalAmount();
+    }
+
+    public void clearItems() {
+        this.cartItems.clear();
+        calculateTotalAmount();
     }
 }

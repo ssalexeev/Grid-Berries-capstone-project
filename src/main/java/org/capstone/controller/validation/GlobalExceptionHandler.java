@@ -1,5 +1,7 @@
 package org.capstone.controller.validation;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.capstone.dto.response.ApiErrorResponse;
 import org.jspecify.annotations.NonNull;
@@ -11,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
@@ -19,21 +22,50 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import java.util.HashMap;
 import java.util.Map;
 
-@RestControllerAdvice
 @Slf4j
+@RestControllerAdvice
 public class GlobalExceptionHandler  extends ResponseEntityExceptionHandler {
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex,
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode status,
-            WebRequest request) {
+            @NonNull WebRequest request) {
 
         Map<String, String> errors = new HashMap<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
 
+        log.warn(ex.getClass().toString());
+
+        String path = ((ServletWebRequest) request).getRequest().getRequestURI();
+
+        ApiErrorResponse errorResponse = new ApiErrorResponse(
+                status.value(),
+                HttpStatus.valueOf(status.value()).getReasonPhrase(),
+                "Validation failed for one or more fields",
+                path,
+                errors
+        );
+
+        return new ResponseEntity<>(errorResponse, headers, status);
+    }
+
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    ResponseEntity<Object> handleConstraintViolationException(
+            ConstraintViolationException ex,
+            @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status,
+            @NonNull WebRequest request) {
+
+        Map<String, String> errors = new HashMap<>();
+        for (ConstraintViolation violation : ex.getConstraintViolations()) {
+            errors.put(violation.getPropertyPath().toString(), violation.getMessage());
+        }
         log.warn(ex.getClass().toString());
 
         String path = ((ServletWebRequest) request).getRequest().getRequestURI();
