@@ -77,16 +77,23 @@ public class Product {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public void addCategory(Category category){
+    public void addCategory(Category category) {
         this.categories.add(category);
         category.getProducts().add(this);
     }
 
-    public void removeCategory(Category category){
+    public void removeCategory(Category category) {
         this.categories.remove(category);
         category.getProducts().remove(this);
     }
 
 
+    public boolean hasRequiredStockQuantity(Integer requiredQuantity) {
+        return this.stockQuantity > requiredQuantity;
+    }
+
+    public boolean isAvailable() {
+        return status.equals(ProductStatus.ACTIVE);
+    }
 
 }

@@ -2,6 +2,7 @@ package org.capstone.controller.admin;
 
 
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Product;
 import org.capstone.domain.User;
@@ -17,7 +18,6 @@ import org.capstone.util.mapper.product.ProductMapper;
 import org.capstone.util.mapper.user.UserMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -45,7 +45,7 @@ public class AdminController {
     }
 
     @PatchMapping("/{userId}")
-    public ResponseEntity<UserModerationResponse> moderateUser(@PathVariable Long userId, @RequestBody @Validated UserModerationRequest request){
+    public ResponseEntity<UserModerationResponse> moderateUser(@PathVariable Long userId, @RequestBody @Valid UserModerationRequest request){
         User user = userMapper.toEntity(request);
 
         User patchedUser = userService.patchUser(userId, user);
@@ -54,7 +54,7 @@ public class AdminController {
     }
 
     @PatchMapping("/{productId}")
-    public ResponseEntity<ProductResponse> moderateProduct(@PathVariable Long productId, @RequestBody @Validated ProductRequest request) {
+    public ResponseEntity<ProductResponse> moderateProduct(@PathVariable Long productId, @RequestBody @Valid ProductRequest request) {
         boolean isAdmin = authenticationService.getUserFromAuthenticationContext().getRole().equals(Role.ADMIN);
         Long sellerProfileId = isAdmin ? null : authenticationService.getSellerIdFromAuthenticationContext();
         Product product = productMapper.toEntity(request);

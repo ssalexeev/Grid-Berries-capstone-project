@@ -1,6 +1,7 @@
 package org.capstone.controller.user.auth;
 
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.User;
 import org.capstone.dto.request.UserAuthRequest;
@@ -28,7 +29,7 @@ public class AuthenticationController {
     //todo finish implementing of JWT auth logic with refresh tokens table and other parts
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody @Validated UserRegistrationRequest registrationRequest){
+    public ResponseEntity<String> registerUser(@RequestBody @Valid UserRegistrationRequest registrationRequest){
         User user = userMapper.toEntity(registrationRequest);
         userService.registerUser(user);
 
@@ -38,13 +39,13 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserTokenAuthenticationResponse> login(@RequestBody @Validated UserAuthRequest authRequest){
+    public ResponseEntity<UserTokenAuthenticationResponse> login(@RequestBody @Valid UserAuthRequest authRequest){
         UserTokenAuthenticationResponse authenticate = authenticationService.authenticate(authRequest);
         return ResponseEntity.ok(authenticate);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<String> refreshToken(@RequestBody @Validated UserRegistrationRequest registrationRequest){
+    public ResponseEntity<String> refreshToken(@RequestBody @Valid UserRegistrationRequest registrationRequest){
         return null;
     }
     @PostMapping("/logout")

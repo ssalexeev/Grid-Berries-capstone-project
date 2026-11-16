@@ -1,6 +1,7 @@
 package org.capstone.controller.seller;
 
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
@@ -39,7 +40,7 @@ public class SellerProfileController {
     }
 
     @PostMapping
-    public ResponseEntity<SellerProfileResponse> createSellerProfile(@RequestBody @Validated SellerProfileCreateRequest request){
+    public ResponseEntity<SellerProfileResponse> createSellerProfile(@RequestBody @Valid SellerProfileCreateRequest request){
         User user = authenticationService.getUserFromAuthenticationContext();
 
         SellerProfile profile = sellerProfileService.createProfile(user, profileMapper.toEntity(request));
@@ -50,7 +51,7 @@ public class SellerProfileController {
 
     //todo
     @PatchMapping
-    public ResponseEntity<SellerProfileResponse> updateSellerProfile(@Validated @RequestBody SellerProfileCreateRequest request){
+    public ResponseEntity<SellerProfileResponse> updateSellerProfile(@Valid @RequestBody SellerProfileCreateRequest request){
         Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         SellerProfile sellerProfile = sellerProfileService.updateProfile(sellerId, profileMapper.toEntity(request));
 

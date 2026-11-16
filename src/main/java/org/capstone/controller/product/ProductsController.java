@@ -1,6 +1,7 @@
 package org.capstone.controller.product;
 
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Product;
 import org.capstone.dto.request.product.ProductRequest;
@@ -17,7 +18,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -52,7 +52,7 @@ public class ProductsController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createProduct(@Validated @RequestBody ProductRequest request) {
+    public ResponseEntity<?> createProduct(@Valid @RequestBody ProductRequest request) {
         Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         Product productEntity = productMapper.toEntity(request);
 
@@ -75,7 +75,7 @@ public class ProductsController {
     }
 
     @PutMapping("/{productId}")
-    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long productId, @Validated @RequestBody ProductRequest request) {
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long productId, @Valid @RequestBody ProductRequest request) {
         Product product = productMapper.toEntity(request);
 
         Product updateProduct = productService.updateProduct(authenticationService.getSellerIdFromAuthenticationContext(), productId, product);
@@ -84,7 +84,7 @@ public class ProductsController {
     }
 
     @PatchMapping("/{productId}")
-    public ResponseEntity<ProductResponse> patchProduct(@PathVariable Long productId, @Validated @RequestBody ProductRequest request) {
+    public ResponseEntity<ProductResponse> patchProduct(@PathVariable Long productId, @Valid @RequestBody ProductRequest request) {
         Long sellerId = authenticationService.getSellerIdFromAuthenticationContext();
         Product product = productMapper.toEntity(request);
 

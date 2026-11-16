@@ -1,4 +1,4 @@
-package org.capstone.controller.product.seller;
+package org.capstone.controller.seller;
 
 
 import lombok.RequiredArgsConstructor;
