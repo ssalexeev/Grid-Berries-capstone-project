@@ -1,16 +1,12 @@
 package org.capstone.service;
 
 import lombok.RequiredArgsConstructor;
-import org.capstone.domain.Cart;
-import org.capstone.domain.CartItem;
 import org.capstone.domain.Order;
 import org.capstone.domain.OrderItem;
 import org.capstone.domain.Product;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.OrderStatus;
-import org.capstone.domain.enums.ProductStatus;
-import org.capstone.repository.jpa.CartRepository;
 import org.capstone.repository.jpa.OrderRepository;
 import org.capstone.repository.jpa.ProductRepository;
 import org.capstone.repository.jpa.SellerProfileRepository;
@@ -18,8 +14,6 @@ import org.capstone.repository.jpa.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,74 +21,60 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
-    private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final SellerProfileRepository sellerProfileRepository;
 
+
     @Transactional
-    public Order placeOrder(Long userId) {
-        User user = getUser(userId);
-        Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found for user ID: " + userId));
-        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
-            throw new IllegalStateException("Cannot place an order from an empty cart.");
+    public Order placeOrder(User user, Order requestedOrder) {
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User must have an ID to place an order.");
+        }
+        if (requestedOrder == null || requestedOrder.getItems() == null || requestedOrder.getItems().isEmpty()) {
+            throw new IllegalArgumentException("An order must contain at least one item.");
         }
 
+        Order order = Order.builder()
+                .user(user)
+                .status(OrderStatus.CREATED)
+                .build();
         List<OrderItem> orderItems = new ArrayList<>();
-        for (CartItem cartItem : cart.getCartItems()) {
-            if (cartItem.getProduct() == null || cartItem.getProduct().getId() == null) {
-                throw new IllegalStateException("Cart contains an item without a product.");
+        for (OrderItem requestedItem : requestedOrder.getItems()) {
+            if (requestedItem == null
+                    || requestedItem.getProduct() == null
+                    || requestedItem.getProduct().getId() == null
+                    || requestedItem.getQuantity() == null
+                    || requestedItem.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Order items require a product ID and positive quantity.");
             }
-            Integer quantity = cartItem.getQuantity();
-            if (quantity == null || quantity < 1) {
-                throw new IllegalStateException("Cart item quantity must be positive.");
-            }
-            Product product = getProduct(cartItem.getProduct().getId());
-            if (product.getStatus() != ProductStatus.ACTIVE) {
+            Integer quantity = requestedItem.getQuantity();
+            Product product = getProduct(requestedItem.getProduct().getId());
+            if (!product.isAvailable()) {
                 throw new IllegalStateException("Product is no longer available: " + product.getId());
             }
-           //todo
-            /*if (!productRepository.reserveStock(product.getId(), quantity)) {
+            if (productRepository.reserveStockIfAvailable(product.getId(), quantity) != 1) {
                 throw new IllegalStateException("Insufficient stock for product: " + product.getId());
-            }*/
-
+            }
             orderItems.add(OrderItem.builder()
+                    .order(order)
                     .product(product)
                     .quantity(quantity)
                     .unitPrice(product.getPrice())
                     .build());
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        Order order = Order.builder()
-                .user(user)
-                .status(OrderStatus.CREATED)
-                .createdAt(now)
-                .updatedAt(now)
-                .items(orderItems)
-                .build();
+        order.setItems(orderItems);
         order.calculateTotal();
-        Order savedOrder = orderRepository.save(order);
-
-        cart.setCartItems(new ArrayList<>());
-        cart.setTotalAmount(BigDecimal.ZERO);
-        cart.setUpdatedAt(now);
-        cartRepository.save(cart);
-
-        return savedOrder;
+        return orderRepository.save(order);
     }
 
     public Order getOrder(Long orderId) {
-        if (orderId == null) {
-            throw new IllegalArgumentException("Order ID cannot be null.");
-        }
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
     }
 
-    public List<Order> getOrderHistory(Long userId) {
-        getUser(userId);
+    public List<Order> getOrdersHistory(Long userId) {
         return orderRepository.findAllByUserId(userId);
     }
 
@@ -107,7 +87,7 @@ public class OrderService {
 
     @Transactional
     public Order updateStatus(Long orderId, Long sellerProfileId, OrderStatus nextStatus) {
-        Order order = getOrderForUpdate(orderId);
+        Order order = getOrderById(orderId);
         getSellerProfile(sellerProfileId);
         if (!containsSellerProduct(order, sellerProfileId)) {
             throw new IllegalStateException("Order does not contain products from this seller.");
@@ -121,7 +101,7 @@ public class OrderService {
 
     @Transactional
     public Order cancelOrder(Long orderId, Long userId) {
-        Order order = getOrderForUpdate(orderId);
+        Order order = getOrderById(orderId);
         getUser(userId);
         if (order.getUser() == null || !userId.equals(order.getUser().getId())) {
             throw new IllegalStateException("Order does not belong to this user.");
@@ -176,7 +156,7 @@ public class OrderService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
     }
 
-    private Order getOrderForUpdate(Long orderId) {
+    private Order getOrderById(Long orderId) {
         if (orderId == null) {
             throw new IllegalArgumentException("Order ID cannot be null.");
         }
@@ -185,6 +165,9 @@ public class OrderService {
     }
 
     private Product getProduct(Long productId) {
+        if (productId == null) {
+            throw new IllegalArgumentException("Product ID cannot be null.");
+        }
         return productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + productId));
     }
