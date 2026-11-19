@@ -1,0 +1,18 @@
+$kind: http-request
+name: Update Cart Item Quantity
+method: PATCH
+url: '{{base_url}}/api/v1/cart/items/{{itemId}}?quantity=3'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+pathVariables:
+  - key: itemId
+    value: '1'
+    description: 'Cart item ID'
+queryParams:
+  - key: quantity
+    value: '3'
+    description: 'New quantity; must be at least 1'
+order: 3000

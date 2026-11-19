@@ -1,0 +1,27 @@
+$kind: http-request
+name: Moderate Product
+method: PATCH
+url: '{{base_url}}/api/v1/admin/product/{{productId}}'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+headers:
+  Content-Type: application/json
+pathVariables:
+  - key: productId
+    value: '1'
+    description: 'Product ID'
+body:
+  type: json
+  content: |-
+    {
+      "title": "Sample Berry Box",
+      "description": "A fresh assortment of berries",
+      "price": 19.99,
+      "stockQuantity": 100,
+      "imageUrl": "https://example.com/image.jpg",
+      "categoryIds": [1]
+    }
+order: 3000

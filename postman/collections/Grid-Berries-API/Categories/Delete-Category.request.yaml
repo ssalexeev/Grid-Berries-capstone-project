@@ -1,0 +1,9 @@
+$kind: http-request
+name: Delete Category
+method: DELETE
+url: '{{base_url}}/api/v1/categories/{{categoryId}}'
+pathVariables:
+  - key: categoryId
+    value: '1'
+    description: 'Category ID'
+order: 6000

@@ -1,0 +1,6 @@
+name: Grid Berries - Development
+values:
+  - key: base_url
+    value: ''
+  - key: access_token
+    value: ''

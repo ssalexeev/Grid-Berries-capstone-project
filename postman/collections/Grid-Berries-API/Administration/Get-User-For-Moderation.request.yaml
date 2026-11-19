@@ -1,0 +1,14 @@
+$kind: http-request
+name: Get User For Moderation
+method: GET
+url: '{{base_url}}/api/v1/admin?userEmail=user@example.com'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+queryParams:
+  - key: userEmail
+    value: 'user@example.com'
+    description: 'Email address of the user to retrieve'
+order: 1000

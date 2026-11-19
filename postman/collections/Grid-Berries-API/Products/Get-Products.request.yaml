@@ -1,0 +1,30 @@
+$kind: http-request
+name: Get Products
+method: GET
+url: '{{base_url}}/api/v1/products?page=0&size=15&sort=createdAt,asc'
+queryParams:
+  - key: page
+    value: '0'
+    description: 'Zero-based page number'
+  - key: size
+    value: '15'
+    description: 'Number of products per page'
+  - key: sort
+    value: 'createdAt,asc'
+    description: 'Sort property and direction'
+  - key: query
+    value: ''
+    disabled: true
+    description: 'Case-insensitive partial match against title or description'
+  - key: categoryIds
+    value: ''
+    disabled: true
+    description: 'Filter by category ID (repeat for multiple)'
+  - key: minPrice
+    value: ''
+    disabled: true
+    description: 'Minimum price (inclusive)'
+  - key: maxPrice
+    value: ''
+    disabled: true
+    description: 'Maximum price (inclusive)'

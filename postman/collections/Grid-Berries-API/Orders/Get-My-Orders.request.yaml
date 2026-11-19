@@ -1,0 +1,10 @@
+$kind: http-request
+name: Get My Orders
+method: GET
+url: '{{base_url}}/api/v1/orders'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+order: 1000

@@ -1,0 +1,15 @@
+$kind: http-request
+name: Create Category
+method: POST
+url: '{{base_url}}/api/v1/categories'
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Berries",
+      "description": "All kinds of berries",
+      "parentCategoryId": null
+    }
+order: 2000

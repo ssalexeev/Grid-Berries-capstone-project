@@ -1,0 +1,20 @@
+$kind: http-request
+name: Moderate Product Status
+method: PATCH
+url: '{{base_url}}/api/v1/products/{{productId}}/moderation'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+headers:
+  Content-Type: application/json
+pathVariables:
+  - key: productId
+    value: '1'
+body:
+  type: json
+  content: |-
+    {
+      "status": "ACTIVE"
+    }

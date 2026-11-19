@@ -7,7 +7,7 @@ target/
 .kotlin
 
 
-postman
+
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
