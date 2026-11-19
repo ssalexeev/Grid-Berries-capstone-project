@@ -15,5 +15,6 @@
         <sqlFile path="changes/v7__create-cart-item-table.sql" relativeToChangelogFile="true"/>
         <sqlFile path="changes/v8__create-order-table.sql" relativeToChangelogFile="true"/>
         <sqlFile path="changes/v9__create-order-item-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v10__create-refresh-token-table.sql" relativeToChangelogFile="true"/>
     </changeSet>
 </databaseChangeLog>

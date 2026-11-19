@@ -1,7 +1,7 @@
 package org.capstone.controller;
 
 import org.capstone.controller.admin.AdminController;
-import org.capstone.controller.validation.GlobalExceptionHandler;
+import org.capstone.controller.exception.handler.GlobalExceptionHandler;
 import org.capstone.domain.Category;
 import org.capstone.domain.Product;
 import org.capstone.domain.User;
@@ -9,7 +9,6 @@ import org.capstone.domain.enums.Role;
 import org.capstone.security.AuthenticationService;
 import org.capstone.service.ProductService;
 import org.capstone.service.UserService;
-import org.capstone.util.mapper.product.ProductMapper;
 import org.capstone.util.mapper.product.ProductMapperImpl;
 import org.capstone.util.mapper.user.PasswordMapper;
 import org.capstone.util.mapper.user.UserMapperImpl;
