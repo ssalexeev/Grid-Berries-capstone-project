@@ -30,8 +30,11 @@ public class CartService {
 
     @Transactional
     public Cart addItem(Long userId, Product product, Integer requiredQuantity) {
-        if (!product.hasRequiredStockQuantity(requiredQuantity)) {
-            throw new IllegalStateException("Stock of product is empty");
+        if (product == null) {
+            throw new IllegalArgumentException("Product cannot be null.");
+        }
+        if (requiredQuantity == null || requiredQuantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive.");
         }
         if (!product.isAvailable()) {
             throw new IllegalStateException("Product is not available");
@@ -44,9 +47,15 @@ public class CartService {
                 .findFirst()
                 .orElse(null);
 
-
-        if (product.hasRequiredStockQuantity(requiredQuantity)) {
-            throw new IllegalStateException("Stock of product is empty");
+        int resultingQuantity = requiredQuantity;
+        if (existingItem != null) {
+            if (existingItem.getQuantity() == null) {
+                throw new IllegalStateException("Existing cart item has no quantity.");
+            }
+            resultingQuantity += existingItem.getQuantity();
+        }
+        if (!product.hasRequiredStockQuantity(resultingQuantity)) {
+            throw new IllegalStateException("Insufficient stock for product.");
         }
 
         if (existingItem == null) {

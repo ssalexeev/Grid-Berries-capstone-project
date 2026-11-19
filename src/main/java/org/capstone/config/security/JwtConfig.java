@@ -38,8 +38,6 @@ public class JwtConfig {
     @Value("${jwt.ttl}")
     private Duration ttl;
 
-    private final UserService userService;
-    private final SellerProfileService sellerProfileService;
 
     @Bean
     public JwtEncoder jwtEncoder(){
@@ -65,11 +63,5 @@ public class JwtConfig {
         return converter;
     }
 
-    @Bean
-    public JwtService jwtService
-            (@Value("${spring.application.name}") final String appName,
-             JwtDecoder jwtDecoder){
-        return new JwtService(appName, ttl, jwtEncoder(), userService, sellerProfileService);
-    }
 }
 

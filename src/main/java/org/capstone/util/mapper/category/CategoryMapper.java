@@ -7,7 +7,7 @@ import org.capstone.dto.response.CategoryResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring",uses = ParentCategoryMapper.class)
+@Mapper(componentModel = "spring", uses = ParentCategoryMapper.class)
 public interface CategoryMapper {
 
     @Mapping(target = "id", ignore = true)

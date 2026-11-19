@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -57,14 +58,12 @@ public class Product {
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    @Builder.Default
     private ProductStatus status = ProductStatus.PENDING_MODERATION;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "seller_profile_id", nullable = false)
     private SellerProfile sellerProfile;
 
-    @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "product_category",
@@ -73,9 +72,19 @@ public class Product {
     )
     private Set<Category> categories = new HashSet<>();
 
-    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.status == null) {
+            this.status = ProductStatus.PENDING_MODERATION;
+        }
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
 
     public void addCategory(Category category) {
         this.categories.add(category);
@@ -89,7 +98,9 @@ public class Product {
 
 
     public boolean hasRequiredStockQuantity(Integer requiredQuantity) {
-        return this.stockQuantity > requiredQuantity;
+        return this.stockQuantity != null
+                && requiredQuantity != null
+                && this.stockQuantity >= requiredQuantity;
     }
 
     public boolean isAvailable() {

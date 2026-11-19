@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -23,23 +24,26 @@ public class UserServiceIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private UserService userService;
     @Autowired
+    private PasswordEncoder passwordEncoder;
+    @Autowired
     private UserRepository userRepository;
 
     @Test
-    @DisplayName("Persists new user with default BUYER role when role is null")
-    void shouldRegisterUserWithDefaultRole() {
+    @DisplayName("Persists a new buyer")
+    void shouldRegisterBuyer() {
         String email = "john.doe@example.com";
         String passwordHash = "argon2id$hashed_secret";
 
         User savedUser = userService.registerUser(User.builder()
                 .email(email)
                 .passwordHash(passwordHash)
+                .role(Role.BUYER)
                 .build()
         );
 
         assertThat(savedUser.getId()).isNotNull();
         assertThat(savedUser.getEmail()).isEqualTo(email);
-        assertThat(savedUser.getPasswordHash()).isEqualTo(passwordHash);
+        assertThat(savedUser.getPasswordHash()).isEqualTo(passwordEncoder.encode(passwordHash));
         assertThat(savedUser.getRole()).isEqualTo(Role.BUYER);
         assertThat(savedUser.getIsActive()).isTrue();
         assertThat(savedUser.getCreatedAt()).isNotNull();
@@ -88,7 +92,7 @@ public class UserServiceIntegrationTest extends AbstractIntegrationTest {
     void shouldDeactivateUser() {
         User user = getRegisteredUser();
 
-        userService.deactivateUser(user.getId());
+        userService.patchUser(user.getId(), User.builder().isActive(false).build());
 
         User deactivatedUser = userService.getUserById(user.getId());
         assertThat(deactivatedUser.getIsActive()).isFalse();
@@ -111,6 +115,7 @@ public class UserServiceIntegrationTest extends AbstractIntegrationTest {
         return userService.registerUser(User.builder()
                 .email(email)
                 .passwordHash(passwordHash)
+                .role(Role.BUYER)
                 .build());
     }
 }

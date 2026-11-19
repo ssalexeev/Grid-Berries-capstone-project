@@ -7,9 +7,14 @@ import org.capstone.dto.response.user.UserModerationResponse;
 import org.capstone.dto.response.user.UserRegistrationResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.NullValueCheckStrategy;
 import org.mapstruct.factory.Mappers;
 
-@Mapper(componentModel = "spring", uses = PasswordMapper.class)
+@Mapper(
+        componentModel = "spring",
+        uses = PasswordMapper.class,
+        nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS
+)
 public interface UserMapper {
     UserMapper INSTANCE = Mappers.getMapper(UserMapper.class);
 
@@ -19,17 +24,17 @@ public interface UserMapper {
             target = "passwordHash",
             qualifiedByName = "encodePassword"
     )
-    @Mapping(target = "isActive", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     User toEntity(UserRegistrationRequest userRegistrationRequest);
 
+
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
     @Mapping(
             source = "password",
             target = "passwordHash",
             qualifiedByName = "encodePassword"
     )
-    @Mapping(target = "createdAt", ignore = true)
     User toEntity(UserModerationRequest moderationRequest);
 
     UserRegistrationResponse toResponse(User user);

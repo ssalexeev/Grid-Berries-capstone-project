@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS refresh_tokens
+CREATE TABLE IF NOT EXISTS refresh_token
 (
     id          BIGSERIAL PRIMARY KEY,
     token       VARCHAR(255)             NOT NULL UNIQUE,
@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS refresh_tokens
     expiry_date TIMESTAMP WITH TIME ZONE NOT NULL,
     revoked     BOOLEAN                  NOT NULL DEFAULT FALSE,
 
-    CONSTRAINT fk_refresh_tokens_user
+    CONSTRAINT fk_refresh_token_user
         FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens (user_id);
+CREATE INDEX idx_refresh_token_user_id ON refresh_token (user_id);

@@ -6,9 +6,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
+@Data
 @Entity
 @Table(name = "refresh_token")
 public class RefreshToken {
@@ -23,7 +29,7 @@ public class RefreshToken {
     private Long userId;
 
     @Column(nullable = false)
-    private Instant expiryDate;
+    private LocalDateTime expiryDate;
 
     private boolean revoked = false;
     // getters & setters

@@ -15,7 +15,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderResponse {
-
     private Long id;
     private OrderStatus status;
     private BigDecimal totalAmount;
@@ -28,7 +27,6 @@ public class OrderResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class OrderItemResponse {
-
         private Long productId;
         private String productTitle;
         private Integer quantity;

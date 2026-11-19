@@ -26,7 +26,7 @@ public class OrderController {
     private final OrderService orderService;
     private final OrderMapper orderMapper;
 
-    @GetMapping("/orders")
+    @GetMapping
     public ResponseEntity<List<OrderResponse>> getBuyerOrders() {
         User user = authenticationService.getUserFromAuthenticationContext();
         List<OrderResponse> ordersHistory = orderService.getOrdersHistory(user.getId()).stream()
@@ -35,11 +35,12 @@ public class OrderController {
         return ResponseEntity.ok(ordersHistory);
     }
 
-    @PostMapping("/orders")
+    @PostMapping
     public ResponseEntity<OrderResponse> placeOrder(@Valid @RequestBody PlaceOrderRequest request) {
         User user = authenticationService.getUserFromAuthenticationContext();
         Order requestedOrder = orderMapper.toEntity(request);
         Order order = orderService.placeOrder(user, requestedOrder);
+        System.out.println("order id is: " + order);
         return ResponseEntity.status(HttpStatus.CREATED).body(orderMapper.toResponse(order));
     }
 
@@ -71,13 +72,13 @@ public class OrderController {
         return ResponseEntity.ok(orderMapper.toResponse(order));
     }
 
-    @PatchMapping("/orders/{orderId}")
+   /* @PatchMapping("/orders/{orderId}")
     public ResponseEntity<OrderResponse> cancelOrder(@PathVariable Long orderId) {
         User user = authenticationService.getUserFromAuthenticationContext();
         Order order = orderService.cancelOrder(orderId, user.getId());
 
         return ResponseEntity.ok(orderMapper.toResponse(order));
-    }
+    }*/
 
     /* @PatchMapping("/orders/{orderId}")
      public ResponseEntity<OrderResponse> patchOrder(

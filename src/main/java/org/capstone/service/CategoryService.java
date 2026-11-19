@@ -39,11 +39,10 @@ public class CategoryService {
             existing.setDescription(category.getDescription());
         }
         if (category.getParentCategoryId() != null){
-            validateParent(category.getParentCategoryId(), existing.getId());
             existing.setParentCategory(category.getParentCategory());
         }
 
-        return categoryRepository.save(category);
+        return categoryRepository.save(existing);
     }
 
     public Category getCategory(Long categoryId) {

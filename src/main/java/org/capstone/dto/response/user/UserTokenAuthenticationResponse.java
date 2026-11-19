@@ -13,8 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserTokenAuthenticationResponse {
     private String accessToken;
-
     //todo add refresh tokens
-    //private String refreshToken;
+    private String refreshToken;
     //private String tokenType;
 }

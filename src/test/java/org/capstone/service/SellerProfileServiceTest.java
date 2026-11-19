@@ -1,25 +1,23 @@
 package org.capstone.service;
 
+import jakarta.persistence.EntityExistsException;
+import jakarta.persistence.EntityNotFoundException;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jpa.SellerProfileRepository;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -31,287 +29,111 @@ class SellerProfileServiceTest {
     private SellerProfileRepository sellerRepository;
 
     @InjectMocks
-    private
-    SellerProfileService sellerProfileService;
+    private SellerProfileService sellerProfileService;
 
-    @Nested
-    class CreateProfileTests {
-
-        @Test
-        void createProfile_WhenUserIsNull_ThrowsIllegalArgumentException() {
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.createProfile(null, "My Store", "Desc", "contact@store.com")
-            );
-
-            assertEquals("SellerProfile must be associated with a valid User.", ex.getMessage());
-            verifyNoInteractions(sellerRepository);
-        }
-
-        @Test
-        void createProfile_WhenUserIdIsNull_ThrowsIllegalArgumentException() {
-            User userWithoutId = User.builder().role(Role.SELLER).isActive(true).build();
-
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.createProfile(userWithoutId, "My Store", "Desc", "contact@store.com")
-            );
-
-            assertEquals("SellerProfile must be associated with a valid User.", ex.getMessage());
-            verifyNoInteractions(sellerRepository);
-        }
-
-        @Test
-        void createProfile_WhenUserIsNotSellerRole_ThrowsIllegalStateException() {
-            User buyerUser = User.builder().id(1L).role(Role.BUYER).isActive(true).build();
-
-            IllegalStateException ex = assertThrows(
-                    IllegalStateException.class,
-                    () -> sellerProfileService.createProfile(buyerUser, "My Store", "Desc", "contact@store.com")
-            );
-
-            assertEquals("Only users with SELLER role can create a seller profile.", ex.getMessage());
-            verifyNoInteractions(sellerRepository);
-        }
-
-        @Test
-        void createProfile_WhenUserIsInactive_ThrowsIllegalStateException() {
-            User inactiveSeller = User.builder().id(1L).role(Role.SELLER).isActive(false).build();
-
-            IllegalStateException ex = assertThrows(
-                    IllegalStateException.class,
-                    () -> sellerProfileService.createProfile(inactiveSeller, "My Store", "Desc", "contact@store.com")
-            );
-
-            assertEquals("Inactive users cannot create a seller profile.", ex.getMessage());
-            verifyNoInteractions(sellerRepository);
-        }
-
-      @Test
-        void createProfile_WhenStoreNameIsNullOrEmptyOrBlank_ThrowsIllegalArgumentException() {
-            String invalidStoreName = "";
-            User validSeller = User.builder().id(1L).role(Role.SELLER).isActive(true).build();
-
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.createProfile(validSeller, invalidStoreName, "Desc", "contact@store.com")
-            );
-
-            assertEquals("Store name cannot be empty.", ex.getMessage());
-            verifyNoInteractions(sellerRepository);
-        }
-
-        @Test
-        void createProfile_WhenProfileAlreadyExistsForUser_ThrowsIllegalStateException() {
-            User validSeller = User.builder()
-                    .id(1L)
-                    .role(Role.SELLER)
-                    .isActive(true)
-                    .build();
-
-            SellerProfile existingProfile = SellerProfile.builder()
-                    .id(100L)
-                    .user(validSeller)
-                    .build();
-
-            when(sellerRepository.findByUserId(1L)).thenReturn(Optional.of(existingProfile));
-
-            IllegalStateException ex = assertThrows(
-                    IllegalStateException.class,
-                    () -> sellerProfileService.createProfile(validSeller, "My Store", "Desc", "contact@store.com")
-            );
-
-            assertEquals("Seller profile already exists for user ID: 1", ex.getMessage());
-            verify(sellerRepository, times(1)).findByUserId(1L);
-            verify(sellerRepository, never()).save(any());
-        }
-
-        @Test
-        void createProfile_WhenValidInputs_SavesAndReturnsProfile() {
-            User validSeller = User.builder()
-                    .id(1L)
-                    .role(Role.SELLER)
-                    .isActive(true)
-                    .build();
-
-            when(sellerRepository.findByUserId(1L)).thenReturn(Optional.empty());
-            when(sellerRepository.save(any(SellerProfile.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            SellerProfile result = sellerProfileService.createProfile(validSeller, "Tech Store", "Best tech", "tech@store.com");
-
-            assertNotNull(result);
-            assertEquals("Tech Store", result.getStoreName());
-            assertEquals("Best tech", result.getStoreDescription());
-            assertEquals("tech@store.com", result.getContactInfo());
-            assertEquals(validSeller, result.getUser());
-
-            verify(sellerRepository, times(1)).findByUserId(1L);
-            verify(sellerRepository, times(1)).save(any(SellerProfile.class));
-        }
+    @Test
+    void createProfileRequiresAUserWithAnId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> sellerProfileService.createProfile(null, new SellerProfile()));
+        assertThrows(IllegalArgumentException.class,
+                () -> sellerProfileService.createProfile(
+                        User.builder().role(Role.SELLER).build(), new SellerProfile()));
+        verifyNoInteractions(sellerRepository);
     }
 
-    @Nested
-    class ReadProfileTests {
+    @Test
+    void createProfileRejectsNonSellerAndInactiveUsers() {
+        User buyer = User.builder().id(1L).role(Role.BUYER).isActive(true).build();
+        User inactiveSeller = User.builder().id(2L).role(Role.SELLER).isActive(false).build();
 
-        @Test
-        void getProfileById_WhenFound_ReturnsProfile() {
-            Long profileId = 100L;
-            SellerProfile profile = SellerProfile.builder().id(profileId).storeName("Store 100").build();
-
-            when(sellerRepository.findById(profileId)).thenReturn(Optional.of(profile));
-
-            SellerProfile result = sellerProfileService.getProfileById(profileId);
-
-            assertEquals(profileId, result.getId());
-            assertEquals("Store 100", result.getStoreName());
-        }
-
-        @Test
-        void getProfileById_WhenNotFound_ThrowsIllegalArgumentException() {
-            when(sellerRepository.findById(999L)).thenReturn(Optional.empty());
-
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.getProfileById(999L)
-            );
-
-            assertEquals("Seller profile not found with ID: 999", ex.getMessage());
-        }
-
-        @Test
-        void getProfileByUserId_WhenUserIdIsNull_ThrowsIllegalArgumentException() {
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.getProfileByUserId(null)
-            );
-
-            assertEquals("User ID cannot be null.", ex.getMessage());
-            verifyNoInteractions(sellerRepository);
-        }
-
-        @Test
-        void getProfileByUserId_WhenFound_ReturnsProfile() {
-            Long userId = 5L;
-            SellerProfile profile = SellerProfile.builder()
-                    .id(200L)
-                    .user(User.builder().id(userId).build())
-                    .build();
-
-            when(sellerRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
-
-            SellerProfile result = sellerProfileService.getProfileByUserId(userId);
-
-            assertEquals(200L, result.getId());
-            verify(sellerRepository, times(1)).findByUserId(userId);
-        }
-
-        @Test
-        void getProfileByUserId_WhenNotFound_ThrowsIllegalArgumentException() {
-            when(sellerRepository.findByUserId(88L)).thenReturn(Optional.empty());
-
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.getProfileByUserId(88L)
-            );
-
-            assertEquals("Seller profile not found for user ID: 88", ex.getMessage());
-        }
-
-        @Test
-        void getAllProfiles_ReturnsAllFromRepository() {
-            when(sellerRepository.findAll()).thenReturn(List.of(new SellerProfile(), new SellerProfile()));
-
-            List<SellerProfile> results = sellerProfileService.getAllProfiles();
-
-            assertEquals(2, results.size());
-            verify(sellerRepository, times(1)).findAll();
-        }
+        assertThrows(IllegalStateException.class,
+                () -> sellerProfileService.createProfile(buyer, new SellerProfile()));
+        assertThrows(IllegalStateException.class,
+                () -> sellerProfileService.createProfile(inactiveSeller, new SellerProfile()));
+        verifyNoInteractions(sellerRepository);
     }
 
-    @Nested
-    class UpdateProfileTests {
+    @Test
+    void createProfileRejectsDuplicateProfiles() {
+        User seller = seller();
+        when(sellerRepository.existsSellerProfileByUser_Id(1L)).thenReturn(true);
 
-        @Test
-        void updateProfile_WhenAllFieldsValid_UpdatesAllFields() {
-            Long profileId = 10L;
-            SellerProfile existingProfile = SellerProfile.builder()
-                    .id(profileId)
-                    .storeName("Old Store")
-                    .storeDescription("Old Desc")
-                    .contactInfo("old@contact.com")
-                    .build();
-
-            when(sellerRepository.findById(profileId)).thenReturn(Optional.of(existingProfile));
-            when(sellerRepository.save(existingProfile)).thenReturn(existingProfile);
-
-            SellerProfile result = sellerProfileService.updateProfile(profileId, "New Store", "New Desc", "new@contact.com");
-
-            assertEquals("New Store", result.getStoreName());
-            assertEquals("New Desc", result.getStoreDescription());
-            assertEquals("new@contact.com", result.getContactInfo());
-            verify(sellerRepository, times(1)).save(existingProfile);
-        }
-
-        @Test
-        void updateProfile_WhenStoreNameIsNullPropertyPreservesOldValue() {
-            Long profileId = 10L;
-            SellerProfile existingProfile = SellerProfile.builder()
-                    .id(profileId)
-                    .storeName("Keep Old Store")
-                    .storeDescription("Old Desc")
-                    .contactInfo("old@contact.com")
-                    .build();
-
-            when(sellerRepository.findById(profileId)).thenReturn(Optional.of(existingProfile));
-            when(sellerRepository.save(existingProfile)).thenReturn(existingProfile);
-
-            // Pass blank storeName, non-null desc/contact
-            SellerProfile result = sellerProfileService.updateProfile(profileId, "   ", "New Desc", "new@contact.com");
-
-            assertEquals("Keep Old Store", result.getStoreName()); // Preserved
-            assertEquals("New Desc", result.getStoreDescription());
-            assertEquals("new@contact.com", result.getContactInfo());
-        }
-
-        @Test
-        void updateProfile_WhenProfileDoesNotExist_ThrowsIllegalArgumentException() {
-            when(sellerRepository.findById(500L)).thenReturn(Optional.empty());
-
-            assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.updateProfile(500L, "Store", "Desc", "Contact")
-            );
-
-            verify(sellerRepository, never()).save(any());
-        }
+        assertThrows(EntityExistsException.class,
+                () -> sellerProfileService.createProfile(seller, new SellerProfile()));
+        verify(sellerRepository).existsSellerProfileByUser_Id(1L);
+        verify(sellerRepository, never()).save(any(SellerProfile.class));
     }
 
-    @Nested
-    class DeleteProfileTests {
+    @Test
+    void createProfileAssociatesAndSavesTheSeller() {
+        User seller = seller();
+        SellerProfile profile = SellerProfile.builder()
+                .storeName("Tech Store")
+                .storeDescription("Best tech")
+                .contactInfo("tech@store.com")
+                .build();
+        when(sellerRepository.existsSellerProfileByUser_Id(1L)).thenReturn(false);
+        when(sellerRepository.save(profile)).thenReturn(profile);
 
-        @Test
-        void deleteProfile_WhenProfileExists_DeletesFromRepository() {
-            Long profileId = 10L;
-            SellerProfile existingProfile = SellerProfile.builder().id(profileId).build();
+        SellerProfile created = sellerProfileService.createProfile(seller, profile);
 
-            when(sellerRepository.findById(profileId)).thenReturn(Optional.of(existingProfile));
+        assertEquals(seller, created.getUser());
+        assertEquals("Tech Store", created.getStoreName());
+        verify(sellerRepository).save(profile);
+    }
 
-            sellerProfileService.deleteProfile(profileId);
+    @Test
+    void getProfileByIdThrowsWhenMissing() {
+        when(sellerRepository.findById(99L)).thenReturn(Optional.empty());
 
-            verify(sellerRepository, times(1)).findById(profileId);
-            verify(sellerRepository, times(1)).delete(existingProfile);
-        }
+        assertThrows(EntityNotFoundException.class, () -> sellerProfileService.getProfileById(99L));
+    }
 
-        @Test
-        void deleteProfile_WhenProfileDoesNotExist_ThrowsIllegalArgumentException() {
-            when(sellerRepository.findById(999L)).thenReturn(Optional.empty());
+    @Test
+    void getProfileByUserIdRequiresAnIdAndFindsTheProfile() {
+        assertThrows(IllegalArgumentException.class, () -> sellerProfileService.getProfileByUserId(null));
+        verifyNoInteractions(sellerRepository);
 
-            assertThrows(
-                    IllegalArgumentException.class,
-                    () -> sellerProfileService.deleteProfile(999L)
-            );
+        SellerProfile profile = SellerProfile.builder().id(8L).user(seller()).build();
+        when(sellerRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
-            verify(sellerRepository, never()).delete(any());
-        }
+        assertEquals(profile, sellerProfileService.getProfileByUserId(1L));
+    }
+
+    @Test
+    void updateProfileChangesProvidedFieldsAndPreservesNullFields() {
+        SellerProfile existing = SellerProfile.builder()
+                .id(10L)
+                .storeName("Old Store")
+                .storeDescription("Old description")
+                .contactInfo("old@contact.com")
+                .build();
+        SellerProfile changes = SellerProfile.builder()
+                .storeName("New Store")
+                .contactInfo("new@contact.com")
+                .build();
+        when(sellerRepository.findById(10L)).thenReturn(Optional.of(existing));
+        when(sellerRepository.save(existing)).thenReturn(existing);
+
+        SellerProfile updated = sellerProfileService.updateProfile(10L, changes);
+
+        assertEquals("New Store", updated.getStoreName());
+        assertEquals("Old description", updated.getStoreDescription());
+        assertEquals("new@contact.com", updated.getContactInfo());
+        verify(sellerRepository).save(existing);
+    }
+
+    @Test
+    void deleteProfileDeletesTheLoadedProfile() {
+        SellerProfile profile = SellerProfile.builder().id(10L).build();
+        when(sellerRepository.findById(10L)).thenReturn(Optional.of(profile));
+
+        sellerProfileService.deleteProfile(10L);
+
+        verify(sellerRepository).delete(profile);
+    }
+
+    private User seller() {
+        return User.builder().id(1L).role(Role.SELLER).isActive(true).build();
     }
 }

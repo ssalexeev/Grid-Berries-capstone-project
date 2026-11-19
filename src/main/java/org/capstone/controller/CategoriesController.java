@@ -36,7 +36,7 @@ public class CategoriesController {
         return ResponseEntity.ok(rootCategories);
     }
 
-    @GetMapping("/{parentCategoryId}")
+    @GetMapping("/parent/{parentCategoryId}")
     public ResponseEntity<List<CategoryResponse>> getChildrenCategories(@PathVariable Long parentCategoryId) {
         List<CategoryResponse> childrenCategoriesResponse = categoryService.getChildren(parentCategoryId).stream()
                 .map(categoryMapper::toResponse)

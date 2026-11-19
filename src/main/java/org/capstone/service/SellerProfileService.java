@@ -20,6 +20,12 @@ public class SellerProfileService {
 
     @Transactional
     public SellerProfile createProfile(User user, SellerProfile sellerProfile) {
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("SellerProfile must be associated with a valid User.");
+        }
+        if (sellerProfile == null) {
+            throw new IllegalArgumentException("SellerProfile cannot be null.");
+        }
         if (user.getRole() != Role.SELLER) {
             throw new IllegalStateException("Only users with SELLER role can create a seller profile.");
         }

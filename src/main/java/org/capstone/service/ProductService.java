@@ -10,13 +10,13 @@ import org.capstone.service.search.ProductSearchCriteria;
 import org.capstone.repository.jpa.CategoryRepository;
 import org.capstone.repository.jpa.ProductRepository;
 import org.capstone.service.search.ProductSpecifications;
+import org.capstone.util.mapper.product.ProductMapper;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,6 +28,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final SellerProfileService sellerProfileService;
+    private final ProductMapper productMapper;
 
 
     public Slice<Product> getProductsSlice(ProductSearchCriteria criteria, Pageable pageable) {
@@ -67,28 +68,10 @@ public class ProductService {
     }
 
     @Transactional
-    public Product patchProduct(Long sellerProfileId, Long productId, Product patchProduct, boolean isAdmin) {
+    public Product patchProduct(Long productId, Product patchProduct) {
         Product existing = getProductById(productId);
 
-        if (!isAdmin) {
-            requireSellerOwnership(existing, sellerProfileId);
-        }
-
-        if (patchProduct.getTitle() != null) {
-            existing.setTitle(patchProduct.getTitle());
-        }
-        if (patchProduct.getPrice() != null) {
-            existing.setPrice(patchProduct.getPrice());
-        }
-        if (patchProduct.getStockQuantity() != null) {
-            existing.setStockQuantity(patchProduct.getStockQuantity());
-        }
-        if (patchProduct.getStatus() != null) {
-            existing.setStatus(patchProduct.getStatus());
-        }
-        if (patchProduct.getImageUrl() != null) {
-            existing.setImageUrl(patchProduct.getImageUrl());
-        }
+        productMapper.updateEntity(existing, patchProduct);
 
         if (patchProduct.getCategories() != null) {
             syncCategories(existing, patchProduct.getCategories());
@@ -137,6 +120,7 @@ public class ProductService {
         requireActive(product);
         return product;
     }
+
 
     public List<Product> getProductsBySeller(Long sellerProfileId) {
         return productRepository.findAllBySellerProfileId(sellerProfileId);
