@@ -1,58 +1,62 @@
 package org.capstone.domain;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
+@Table(name = "cart")
 public class Cart {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private BigDecimal totalAmount;
-    private LocalDateTime updatedAt;
 
-    // Relationships
+    @Builder.Default
+    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
     @Builder.Default
-    private List<CartItem> items = new ArrayList<>();
-
-    public void addItem(Product product, Integer quantity) {
-        // Implementation to add item to cart
-    }
-
-    public void removeItem(Long cartItemId) {
-        items.removeIf(item -> item.getId().equals(cartItemId));
-        calculateTotal();
-    }
-
-    public void updateQuantity(Long cartItemId, Integer newQuantity) {
-        for (CartItem item : items) {
-            if (item.getId().equals(cartItemId)) {
-                item.setQuantity(newQuantity);
-                break;
-            }
-        }
-        calculateTotal();
-    }
-
-    public void clear() {
-        items.clear();
-        this.totalAmount = BigDecimal.ZERO;
-    }
+    @OneToMany(mappedBy = "cart",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<CartItem> cartItems = new ArrayList<>();
 
     public BigDecimal calculateTotal() {
-        this.totalAmount = items.stream()
+        totalAmount = cartItems.stream()
                 .map(CartItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return this.totalAmount;
+        return totalAmount;
     }
 }
