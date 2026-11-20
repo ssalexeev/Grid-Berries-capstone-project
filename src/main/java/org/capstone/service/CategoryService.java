@@ -2,7 +2,7 @@ package org.capstone.service;
 
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Category;
-import org.capstone.repository.jdbc.CategoryRepository;
+import org.capstone.repository.jpa.CategoryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

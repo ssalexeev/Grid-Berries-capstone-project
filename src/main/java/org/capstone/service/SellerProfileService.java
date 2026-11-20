@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.SellerProfileRepository;
+import org.capstone.repository.jpa.SellerProfileRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

@@ -2,13 +2,14 @@ package org.capstone.service;
 
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Category;
+import org.capstone.domain.Order;
+import org.capstone.domain.OrderItem;
 import org.capstone.domain.Product;
-import org.capstone.domain.UserMetricEvent;
-import org.capstone.domain.enums.MetricEventType;
+import org.capstone.domain.enums.OrderStatus;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.repository.jdbc.ProductRepository;
-import org.capstone.repository.jdbc.UserMetricEventRepository;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.OrderRepository;
+import org.capstone.repository.jpa.ProductRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -22,9 +23,9 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RecommendationService {
     private final ProductRepository productRepository;
-    private final UserMetricEventRepository eventRepository;
+    private final OrderRepository orderRepository;
     private final UserRepository userRepository;
-    private final UserMetricEventService userMetricEventService;
+
     public List<Product> getRecommendations(Long userId, int limit) {
         if (userId == null || userRepository.findById(userId).isEmpty()) {
             throw new IllegalArgumentException("A valid user ID is required.");
@@ -35,35 +36,18 @@ public class RecommendationService {
 
         Map<Long, Integer> categoryAffinity = new HashMap<>();
         Set<Long> purchasedProductIds = new HashSet<>();
-        for (UserMetricEvent event : userMetricEventService.getEventsForUser(userId)) {
-            Product product = event.getProduct();
-            if (product == null) {
-                continue;
-            }
-            List<Category> categories = product.getCategories() == null || product.getCategories().isEmpty()
-                    ? product.getCategory() == null ? List.of() : List.of(product.getCategory())
-                    : product.getCategories();
-
-            if (event.getEventType() == MetricEventType.PURCHASE) {
-                purchasedProductIds.add(product.getId());
-            }
-            int weight = switch (event.getEventType()) {
-                case VIEW -> 1;
-                case ADD_TO_CART -> 2;
-                case PURCHASE -> 3;
-                case SEARCH -> 0;
-            };
-            for (Category category : categories) {
-                if (category != null && category.getId() != null) {
-                    categoryAffinity.merge(category.getId(), weight, Integer::sum);
-                }
-            }
+        for (Order order : orderRepository.findAllByUserId(userId)) {
+            collectOrderSignals(order, categoryAffinity, purchasedProductIds);
         }
 
         Map<Long, Integer> popularity = new HashMap<>();
-        for (UserMetricEvent event : eventRepository.findAll()) {
-            if (event.getEventType() == MetricEventType.VIEW && event.getProduct() != null) {
-                popularity.merge(event.getProduct().getId(), 1, Integer::sum);
+        for (Order order : orderRepository.findAll()) {
+            if (order.getStatus() != OrderStatus.CANCELLED) {
+                for (OrderItem item : order.getItems()) {
+                    if (item.getProduct() != null && item.getProduct().getId() != null) {
+                        popularity.merge(item.getProduct().getId(), quantity(item), Integer::sum);
+                    }
+                }
             }
         }
 
@@ -71,7 +55,7 @@ public class RecommendationService {
                 .filter(product -> product.getStatus() == ProductStatus.ACTIVE)
                 .filter(product -> !purchasedProductIds.contains(product.getId()))
                 .sorted(Comparator
-                        .comparingInt((Product product) -> categoryScore(product.getCategory(), categoryAffinity))
+                        .comparingInt((Product product) -> categoryScore(product, categoryAffinity))
                         .thenComparingInt(product -> popularity.getOrDefault(product.getId(), 0))
                         .reversed()
                         .thenComparing(Product::getId))
@@ -79,9 +63,41 @@ public class RecommendationService {
                 .toList();
     }
 
-    private int categoryScore(Category category, Map<Long, Integer> categoryAffinity) {
-        return category == null || category.getId() == null
-                ? 0
-                : categoryAffinity.getOrDefault(category.getId(), 0);
+    private void collectOrderSignals(
+            Order order,
+            Map<Long, Integer> categoryAffinity,
+            Set<Long> purchasedProductIds) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            return;
+        }
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            if (product == null || product.getId() == null) {
+                continue;
+            }
+            purchasedProductIds.add(product.getId());
+            if (product.getCategories() == null) {
+                continue;
+            }
+            for (Category category : product.getCategories()) {
+                if (category != null && category.getId() != null) {
+                    categoryAffinity.merge(category.getId(), quantity(item), Integer::sum);
+                }
+            }
+        }
+    }
+
+    private int categoryScore(Product product, Map<Long, Integer> categoryAffinity) {
+        if (product.getCategories() == null) {
+            return 0;
+        }
+        return product.getCategories().stream()
+                .filter(category -> category != null && category.getId() != null)
+                .mapToInt(category -> categoryAffinity.getOrDefault(category.getId(), 0))
+                .sum();
+    }
+
+    private int quantity(OrderItem item) {
+        return item.getQuantity() == null ? 1 : item.getQuantity();
     }
 }

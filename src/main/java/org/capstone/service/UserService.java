@@ -3,7 +3,7 @@ package org.capstone.service;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;

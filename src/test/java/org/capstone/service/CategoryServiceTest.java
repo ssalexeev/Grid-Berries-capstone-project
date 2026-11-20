@@ -1,7 +1,7 @@
 package org.capstone.service;
 
 import org.capstone.domain.Category;
-import org.capstone.repository.jdbc.CategoryRepository;
+import org.capstone.repository.jpa.CategoryRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,8 +24,10 @@ class CategoryServiceTest {
 
     @Test
     void updateCategoryRejectsHierarchyCycles() {
-        Category current = Category.builder().id(1L).name("Fruit").parentCategoryId(null).build();
-        Category descendant = Category.builder().id(2L).name("Berries").parentCategoryId(1L).build();
+        Category current = Category.builder().id(1L).name("Fruit").build();
+        Category descendant = Category.builder().id(2L).name("Berries")
+                .parentCategory(Category.builder().id(1L).build())
+                .build();
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(current));
         when(categoryRepository.findById(2L)).thenReturn(Optional.of(descendant));
 

@@ -9,13 +9,12 @@ import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.OrderStatus;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.domain.enums.ProductType;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.CartRepository;
-import org.capstone.repository.jdbc.OrderRepository;
-import org.capstone.repository.jdbc.ProductRepository;
-import org.capstone.repository.jdbc.SellerProfileRepository;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.CartRepository;
+import org.capstone.repository.jpa.OrderRepository;
+import org.capstone.repository.jpa.ProductRepository;
+import org.capstone.repository.jpa.SellerProfileRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.capstone.service.CartService;
 import org.capstone.service.OrderService;
 import org.junit.jupiter.api.Test;
@@ -59,7 +58,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
         assertEquals(3, productRepository.findById(data.product().getId()).orElseThrow().getStockQuantity());
         Cart cart = cartRepository.findByUserId(data.buyer().getId()).orElseThrow();
         assertEquals(0, cart.getTotalAmount().compareTo(BigDecimal.ZERO));
-        assertEquals(0, cart.getItems().size());
+        assertEquals(0, cart.getCartItems().size());
 
         Order cancelled = orderService.cancelOrder(order.getId(), data.buyer().getId());
         assertEquals(OrderStatus.CANCELLED, cancelled.getStatus());
@@ -73,7 +72,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
         Cart cart = Cart.builder()
                 .user(data.buyer())
                 .updatedAt(LocalDateTime.now())
-                .items(new ArrayList<>(List.of(
+                .cartItems(new ArrayList<>(List.of(
                         CartItem.builder().product(data.product()).quantity(2).build(),
                         CartItem.builder().product(secondProduct).quantity(1).build())))
                 .build();
@@ -86,7 +85,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
 
         assertEquals(5, productRepository.findById(data.product().getId()).orElseThrow().getStockQuantity());
         assertEquals(0, orderRepository.findAllByUserId(data.buyer().getId()).size());
-        assertEquals(2, cartRepository.findById(savedCart.getId()).orElseThrow().getItems().size());
+        assertEquals(2, cartRepository.findById(savedCart.getId()).orElseThrow().getCartItems().size());
     }
 
     private TestData createTestData(int stock) {
@@ -121,7 +120,6 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                 .description("For integration test")
                 .price(new BigDecimal("7.50"))
                 .stockQuantity(stock)
-                .type(ProductType.PHYSICAL_GOOD)
                 .status(ProductStatus.ACTIVE)
                 .build());
     }

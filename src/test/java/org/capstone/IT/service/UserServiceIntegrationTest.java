@@ -4,7 +4,7 @@ package org.capstone.IT.service;
 import org.capstone.IT.AbstractIntegrationTest;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.UserRepository;
+import org.capstone.repository.jpa.UserRepository;
 import org.capstone.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

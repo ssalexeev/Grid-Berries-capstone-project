@@ -4,18 +4,20 @@ import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Category;
 import org.capstone.domain.Product;
 import org.capstone.domain.SellerProfile;
-import org.capstone.domain.enums.MetricEventType;
 import org.capstone.domain.enums.ProductStatus;
 import org.capstone.domain.enums.Role;
-import org.capstone.repository.jdbc.CategoryRepository;
-import org.capstone.repository.jdbc.ProductRepository;
-import org.capstone.repository.jdbc.SellerProfileRepository;
+import org.capstone.repository.jpa.CategoryRepository;
+import org.capstone.repository.jpa.ProductRepository;
+import org.capstone.repository.jpa.SellerProfileRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +25,6 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final SellerProfileRepository sellerProfileRepository;
     private final CategoryRepository categoryRepository;
-    private final UserMetricEventService metricEventService;
 
     @Transactional
     public Product createProduct(Long sellerProfileId, Product product) {
@@ -33,9 +34,8 @@ public class ProductService {
         product.setId(null);
         product.setSellerProfile(seller);
         product.setStatus(ProductStatus.PENDING_MODERATION);
-        List<Category> categories = getCategories(product);
+        Set<Category> categories = getCategories(product);
         product.setCategories(categories);
-        product.setCategory(categories.isEmpty() ? null : categories.get(0));
 
         return productRepository.save(product);
     }
@@ -54,10 +54,8 @@ public class ProductService {
         existing.setPrice(changes.getPrice());
         existing.setStockQuantity(changes.getStockQuantity());
         existing.setImageUrl(changes.getImageUrl());
-        existing.setType(changes.getType());
-        List<Category> categories = getCategories(changes);
+        Set<Category> categories = getCategories(changes);
         existing.setCategories(categories);
-        existing.setCategory(categories.isEmpty() ? null : categories.get(0));
 
         return productRepository.save(existing);
     }
@@ -75,13 +73,12 @@ public class ProductService {
     public Product viewProduct(Long productId, Long userId) {
         Product product = getProductById(productId);
         requireActive(product);
-        metricEventService.recordEvent(MetricEventType.VIEW, userId, productId, null, null);
         return product;
     }
 
     public List<Product> getProductsBySeller(Long sellerProfileId) {
         getSellerProfile(sellerProfileId);
-        return productRepository.findBySellerId(sellerProfileId);
+        return productRepository.findAllBySellerProfileId(sellerProfileId);
     }
 
     public List<Product> searchProducts(
@@ -95,10 +92,6 @@ public class ProductService {
         if (categoryId != null && categoryRepository.findById(categoryId).isEmpty()) {
             throw new IllegalArgumentException("Category not found with ID: " + categoryId);
         }
-        if (userId != null) {
-            metricEventService.recordEvent(MetricEventType.SEARCH, userId, null, keyword, null);
-        }
-
         String normalizedKeyword = keyword == null ? null : keyword.trim().toLowerCase();
         return productRepository.findAll().stream()
                 .filter(product -> product.getStatus() == ProductStatus.ACTIVE)
@@ -143,7 +136,7 @@ public class ProductService {
         if (sellerProfileId == null) {
             throw new IllegalArgumentException("Seller profile ID cannot be null.");
         }
-        for (Product product : productRepository.findBySellerId(sellerProfileId)) {
+        for (Product product : productRepository.findAllBySellerProfileId(sellerProfileId)) {
             product.setStatus(ProductStatus.SUSPENDED);
             productRepository.save(product);
         }
@@ -161,9 +154,6 @@ public class ProductService {
         }
         if (product.getStockQuantity() == null || product.getStockQuantity() < 0) {
             throw new IllegalArgumentException("Product stock cannot be negative or null.");
-        }
-        if (product.getType() == null) {
-            throw new IllegalArgumentException("Product type is required.");
         }
     }
 
@@ -194,15 +184,14 @@ public class ProductService {
                         "Category not found with ID: " + category.getId()));
     }
 
-    private List<Category> getCategories(Product product) {
-        List<Category> requested = product.getCategories();
+    private Set<Category> getCategories(Product product) {
+        Set<Category> requested = product.getCategories();
         if (requested == null || requested.isEmpty()) {
-            return product.getCategory() == null ? List.of() : List.of(getCategory(product.getCategory()));
+            return Set.of();
         }
         return requested.stream()
                 .map(this::getCategory)
-                .distinct()
-                .toList();
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private void requireSellerOwnership(Product product, Long sellerProfileId) {
@@ -249,6 +238,6 @@ public class ProductService {
                 .anyMatch(category -> categoryId.equals(category.getId()))) {
             return true;
         }
-        return product.getCategory() != null && categoryId.equals(product.getCategory().getId());
+        return false;
     }
 }

@@ -6,10 +6,14 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <changeSet id="1" author="serghei-alexeev">
-        <sqlFile path="changes/v1__init_schema.sql" relativeToChangelogFile="true"/>
-    </changeSet>
-
-    <changeSet id="2" author="serghei-alexeev">
-        <sqlFile path="changes/v2__repository_columns.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v1__create-user-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v2__create-seller-profile-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v3__create-category-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v4__create-product-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v5__create-product-category-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v6__create-cart-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v7__create-cart-item-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v8__create-order-table.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="changes/v9__create-order-item-table.sql" relativeToChangelogFile="true"/>
     </changeSet>
 </databaseChangeLog>
