@@ -13,6 +13,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,33 +37,33 @@ import java.util.Set;
 @Table(name = "product")
 public class Product {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "productSeqGen")
+    @SequenceGenerator(name = "productSeqGen", sequenceName = "product_id_seq")
     private Long id;
 
-    @Column(name = "title", nullable = false, length = 100)
+    @Column(name = "title")
     private String title;
 
-    @Column(name = "description", columnDefinition = "text")
+    @Column(name = "description")
     private String description;
 
-    @Column(name = "price", nullable = false, precision = 10, scale = 2)
+    @Column(name = "price")
     private BigDecimal price;
 
-    @Column(name = "stock_quantity", nullable = false)
+    @Column(name = "stock_quantity")
     private Integer stockQuantity;
 
-    @Column(name = "image_url", length = 255)
+    @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "status", nullable = false, length = 50)
+    @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    private ProductStatus status;
+    private ProductStatus status = ProductStatus.PENDING_MODERATION;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "seller_profile_id", nullable = false)
     private SellerProfile sellerProfile;
 
-    @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "product_category",
@@ -70,7 +72,39 @@ public class Product {
     )
     private Set<Category> categories = new HashSet<>();
 
-    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.status == null) {
+            this.status = ProductStatus.PENDING_MODERATION;
+        }
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
+
+    public void addCategory(Category category) {
+        this.categories.add(category);
+        category.getProducts().add(this);
+    }
+
+    public void removeCategory(Category category) {
+        this.categories.remove(category);
+        category.getProducts().remove(this);
+    }
+
+
+    public boolean hasRequiredStockQuantity(Integer requiredQuantity) {
+        return this.stockQuantity != null
+                && requiredQuantity != null
+                && this.stockQuantity >= requiredQuantity;
+    }
+
+    public boolean isAvailable() {
+        return status.equals(ProductStatus.ACTIVE);
+    }
+
 }

@@ -1,16 +1,17 @@
 package org.capstone.service;
 
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Cart;
 import org.capstone.domain.CartItem;
 import org.capstone.domain.Product;
 import org.capstone.domain.User;
-import org.capstone.domain.enums.ProductStatus;
+import org.capstone.repository.jpa.CartItemRepository;
 import org.capstone.repository.jpa.CartRepository;
-import org.capstone.repository.jpa.ProductRepository;
-import org.capstone.repository.jpa.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 
@@ -18,8 +19,9 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class CartService {
     private final CartRepository cartRepository;
-    private final ProductRepository productRepository;
-    private final UserRepository userRepository;
+    private final CartItemRepository cartItemRepository;
+    private final UserService userService;
+    private final ProductService productService;
 
     @Transactional
     public Cart getCart(Long userId) {
@@ -27,135 +29,112 @@ public class CartService {
     }
 
     @Transactional
-    public Cart addProduct(Long userId, Long productId, int quantity) {
-        validateQuantity(quantity);
-        Cart cart = getOrCreateCart(userId);
-        Product product = getProduct(productId);
-        requireAvailable(product);
+    public Cart addItem(Long userId, Product product, Integer requiredQuantity) {
+        if (product == null) {
+            throw new IllegalArgumentException("Product cannot be null.");
+        }
+        if (requiredQuantity == null || requiredQuantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive.");
+        }
+        if (!product.isAvailable()) {
+            throw new IllegalStateException("Product is not available");
+        }
 
+        Cart cart = getOrCreateCart(userId);
         CartItem existingItem = cart.getCartItems().stream()
                 .filter(item -> item.getProduct() != null
-                        && productId.equals(item.getProduct().getId()))
+                        && product.getId().equals(item.getProduct().getId()))
                 .findFirst()
                 .orElse(null);
 
-        int resultingQuantity = quantity + (existingItem == null ? 0 : existingItem.getQuantity());
-
-        requireStock(product, resultingQuantity);
+        int resultingQuantity = requiredQuantity;
+        if (existingItem != null) {
+            if (existingItem.getQuantity() == null) {
+                throw new IllegalStateException("Existing cart item has no quantity.");
+            }
+            resultingQuantity += existingItem.getQuantity();
+        }
+        if (!product.hasRequiredStockQuantity(resultingQuantity)) {
+            throw new IllegalStateException("Insufficient stock for product.");
+        }
 
         if (existingItem == null) {
-            cart.getCartItems().add(
+            cart.addItem(
                     CartItem.builder()
                             .cart(cart)
                             .product(product)
-                            .quantity(quantity)
+                            .quantity(requiredQuantity)
                             .createdAt(LocalDateTime.now())
                             .build()
             );
         } else {
-            existingItem.setQuantity(resultingQuantity);
+            existingItem.setQuantity(existingItem.getQuantity() + requiredQuantity);
         }
 
-        cart.setUpdatedAt(LocalDateTime.now());
-        cart.calculateTotal();
+        cart.calculateTotalAmount();
 
-        Cart saved = cartRepository.save(cart);
-
-        return saved;
+        return cartRepository.save(cart);
 
     }
 
     @Transactional
-    public Cart updateQuantity(Long userId, Long cartItemId, int quantity) {
-        validateQuantity(quantity);
-        Cart cart = getCartOrFail(userId);
-        CartItem item = findCartItem(cart, cartItemId);
-        Product product = getProduct(item.getProduct().getId());
-        requireAvailable(product);
-        requireStock(product, quantity);
-        item.setProduct(product);
+    @Validated
+    public Cart updateQuantity(Cart cart, Long cartItemId, @Positive int quantity) {
+        CartItem item = getCartItem(cartItemId, cart.getId());
+        Product product = productService.getProductById(item.getProduct().getId());
+
+        if (!product.isAvailable()) {
+            throw new IllegalStateException("Product is not available");
+        }
+        if (!product.hasRequiredStockQuantity(quantity)) {
+            throw new IllegalStateException("Product has not required stock quantity");
+        }
+
         item.setQuantity(quantity);
-        cart.setUpdatedAt(LocalDateTime.now());
-        cart.calculateTotal();
+
+        cart.calculateTotalAmount();
+
         return cartRepository.save(cart);
     }
 
     @Transactional
     public Cart removeItem(Long userId, Long cartItemId) {
-        Cart cart = getCartOrFail(userId);
-        findCartItem(cart, cartItemId);
+        Cart cart = getCartByUserId(userId);
+        getCartItem(cartItemId, cart.getId());
         cart.getCartItems().removeIf(item -> cartItemId.equals(item.getId()));
-        cart.setUpdatedAt(LocalDateTime.now());
-        cart.calculateTotal();
+        cart.calculateTotalAmount();
         return cartRepository.save(cart);
     }
 
+    private CartItem getCartItem(Long cartItemId, Long cartId) {
+        return cartItemRepository.findByIdAndCart_Id(cartItemId, cartId)
+                .orElseThrow(() -> new EntityNotFoundException("Cart item not found by id: " + cartId + " and cart_id: " + cartId));
+    }
+
     @Transactional
-    public Cart clearCart(Long userId) {
-        Cart cart = getCartOrFail(userId);
-        cart.getCartItems().clear();
-        cart.setUpdatedAt(LocalDateTime.now());
-        cart.calculateTotal();
+    public Cart clearUserCart(Long userId) {
+        Cart cart = getCartByUserId(userId);
+        cart.clearItems();
         return cartRepository.save(cart);
     }
 
     private Cart getOrCreateCart(Long userId) {
-        User user = getUser(userId);
-        return cartRepository.findByUserId(userId).orElseGet(() -> cartRepository.save(Cart.builder()
-                .user(user)
-                .totalAmount(java.math.BigDecimal.ZERO)
-                .updatedAt(LocalDateTime.now())
-                .build()));
+        User user = userService.getUserById(userId);
+        return cartRepository.findByUserId(userId)
+                .orElseGet(
+                        () -> cartRepository.save(Cart.builder()
+                                .user(user)
+                                .totalAmount(java.math.BigDecimal.ZERO)
+                                .updatedAt(LocalDateTime.now())
+                                .build())
+                );
     }
 
-    private Cart getCartOrFail(Long userId) {
-        getUser(userId);
+    private Cart getCartByUserId(Long userId) {
         return cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Cart not found for user ID: " + userId));
     }
 
-    private User getUser(Long userId) {
-        if (userId == null) {
-            throw new IllegalArgumentException("User ID cannot be null.");
-        }
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
-    }
 
-    private Product getProduct(Long productId) {
-        if (productId == null) {
-            throw new IllegalArgumentException("Product ID cannot be null.");
-        }
-        return productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + productId));
-    }
 
-    private CartItem findCartItem(Cart cart, Long cartItemId) {
-        if (cartItemId == null) {
-            throw new IllegalArgumentException("Cart item ID cannot be null.");
-        }
-        return cart.getCartItems().stream()
-                .filter(item -> cartItemId.equals(item.getId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Cart item not found in this user's cart: " + cartItemId));
-    }
-
-    private void requireAvailable(Product product) {
-        if (product.getStatus() != ProductStatus.ACTIVE) {
-            throw new IllegalStateException("Product is not available for purchase.");
-        }
-    }
-
-    private void requireStock(Product product, int quantity) {
-        if (product.getStockQuantity() == null || product.getStockQuantity() < quantity) {
-            throw new IllegalStateException("Requested quantity exceeds available stock.");
-        }
-    }
-
-    private void validateQuantity(int quantity) {
-        if (quantity < 1) {
-            throw new IllegalArgumentException("Quantity must be positive.");
-        }
-    }
 }

@@ -1,0 +1,25 @@
+$kind: http-request
+name: Patch Product
+method: PATCH
+url: '{{base_url}}/api/v1/products/{{productId}}'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+headers:
+  Content-Type: application/json
+pathVariables:
+  - key: productId
+    value: '1'
+body:
+  type: json
+  content: |-
+    {
+      "title": "Sample Berry Box",
+      "description": "A fresh assortment of berries",
+      "price": 19.99,
+      "stockQuantity": 100,
+      "imageUrl": "https://example.com/image.jpg",
+      "categoryIds": [1]
+    }

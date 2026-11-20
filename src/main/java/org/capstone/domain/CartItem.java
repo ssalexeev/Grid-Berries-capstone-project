@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,7 +28,11 @@ import java.time.LocalDateTime;
 @Table(name = "cart_item")
 public class CartItem {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "cartItemSeqGen")
+    @SequenceGenerator(
+            name = "cartItemSeqGen",
+            sequenceName = "cart_item_id_seq"
+    )
     private Long id;
 
     @Builder.Default
@@ -45,11 +50,4 @@ public class CartItem {
     @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    public BigDecimal getSubtotal() {
-        if (product == null || product.getPrice() == null || quantity == null) {
-            return BigDecimal.ZERO;
-        }
-        return product.getPrice().multiply(BigDecimal.valueOf(quantity));
-    }
 }

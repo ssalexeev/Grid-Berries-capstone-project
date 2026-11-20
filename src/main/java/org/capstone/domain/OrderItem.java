@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,7 +29,8 @@ import java.time.LocalDateTime;
 public class OrderItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "orderItemSeqGen")
+    @SequenceGenerator(name = "orderItemSeqGen", sequenceName = "order_item_id_seq")
     private Long id;
 
     @Column(name = "quantity", nullable = false)

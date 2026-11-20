@@ -4,6 +4,7 @@ package org.capstone.service;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jpa.UserRepository;
+import org.capstone.util.exception.UserAlreadyExistsException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,43 +42,16 @@ class UserServiceTest {
     class RegisterUserTests {
 
         @Test
-        void registerUser_WhenEmailIsNullOrEmptyOrBlank_ThrowsIllegalArgumentException() {
-            String invalidEmail = "";
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> userService.registerUser(invalidEmail, "hashedPass123", Role.BUYER)
-            );
+        void registerUser_WhenEmailAlreadyExists_ThrowsUserAlreadyExistsException() {
+            when(userRepository.existsByEmailIgnoreCase("EXISTING@example.com")).thenReturn(true);
 
-            assertEquals("Email cannot be empty.", ex.getMessage());
-            verifyNoInteractions(userRepository);
-        }
-
-       @Test
-        void registerUser_WhenPasswordHashIsNullOrEmptyOrBlank_ThrowsIllegalArgumentException() {
-            String invalidPassword = "";
-            IllegalArgumentException ex = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> userService.registerUser("user@example.com", invalidPassword, Role.BUYER)
-            );
-
-            assertEquals("Password cannot be empty.", ex.getMessage());
-            verifyNoInteractions(userRepository);
-        }
-
-        @Test
-        void registerUser_WhenEmailAlreadyExists_ThrowsIllegalStateException() {
-            String existingEmail = "existing@example.com";
-            User existingUser = User.builder().email(existingEmail).build();
-
-            when(userRepository.findAll()).thenReturn(List.of(existingUser));
-
-            IllegalStateException ex = assertThrows(
-                    IllegalStateException.class,
-                    () -> userService.registerUser("EXISTING@example.com", "hash123", Role.BUYER)
+            UserAlreadyExistsException ex = assertThrows(
+                    UserAlreadyExistsException.class,
+                    () -> userService.registerUser(User.builder().email("EXISTING@example.com").passwordHash("pshasdss").build())
             );
 
             assertEquals("User with email EXISTING@example.com already exists.", ex.getMessage());
-            verify(userRepository, times(1)).findAll();
+            verify(userRepository).existsByEmailIgnoreCase("EXISTING@example.com");
             verify(userRepository, never()).save(any());
         }
 
@@ -87,10 +61,16 @@ class UserServiceTest {
             String passwordHash = "hash123";
             Role role = Role.ADMIN;
 
-            when(userRepository.findAll()).thenReturn(List.of());
+            when(userRepository.existsByEmailIgnoreCase(email)).thenReturn(false);
             when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            User result = userService.registerUser(email, passwordHash, role);
+            User result = userService.registerUser(
+                    User.builder()
+                            .email(email)
+                            .passwordHash(passwordHash)
+                            .role(role)
+                            .build()
+            );
 
             assertNotNull(result);
             assertEquals(email, result.getEmail());
@@ -103,14 +83,18 @@ class UserServiceTest {
         }
 
         @Test
-        void registerUser_WhenRoleIsNull_DefaultsToBuyerRole() {
+        void registerUser_WhenRoleIsProvided_PreservesBuyerRole() {
             String email = "buyer@example.com";
             String passwordHash = "hash123";
 
-            when(userRepository.findAll()).thenReturn(List.of());
+            when(userRepository.existsByEmailIgnoreCase(email)).thenReturn(false);
             when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            User result = userService.registerUser(email, passwordHash, null);
+            User result = userService.registerUser(User.builder()
+                    .email(email)
+                    .passwordHash(passwordHash)
+                    .role(Role.BUYER)
+                    .build());
 
             assertEquals(Role.BUYER, result.getRole());
             verify(userRepository, times(1)).save(any(User.class));
@@ -284,13 +268,14 @@ class UserServiceTest {
         }
 
         @Test
-        void deactivateUser_WhenUserExists_SetsIsActiveToFalseAndUpdateRepository() {
+        void patchUser_WhenActiveIsFalse_DeactivatesUser() {
             Long userId = 5L;
             User activeUser = User.builder().id(userId).isActive(true).build();
 
             when(userRepository.findById(userId)).thenReturn(Optional.of(activeUser));
+            when(userRepository.save(activeUser)).thenReturn(activeUser);
 
-            userService.deactivateUser(userId);
+            userService.patchUser(userId, User.builder().isActive(false).build());
 
             assertFalse(activeUser.getIsActive());
             verify(userRepository, times(1)).save(activeUser);

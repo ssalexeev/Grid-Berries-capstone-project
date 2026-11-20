@@ -1,0 +1,12 @@
+$kind: http-request
+name: Delete Product
+method: DELETE
+url: '{{base_url}}/api/v1/products/{{productId}}'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+pathVariables:
+  - key: productId
+    value: '1'

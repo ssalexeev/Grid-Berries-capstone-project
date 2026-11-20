@@ -1,0 +1,23 @@
+$kind: http-request
+name: Place Order
+method: POST
+url: '{{base_url}}/api/v1/orders'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "items": [
+        {
+          "productId": 1,
+          "quantity": 2
+        }
+      ]
+    }
+order: 2000

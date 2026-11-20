@@ -1,5 +1,6 @@
 package org.capstone.service;
 
+import jakarta.persistence.EntityExistsException;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Category;
 import org.capstone.repository.jpa.CategoryRepository;
@@ -18,23 +19,30 @@ public class CategoryService {
 
     @Transactional
     public Category createCategory(Category category) {
-        validateCategory(category);
         validateParent(category.getParentCategoryId(), null);
+
         category.setId(null);
         return categoryRepository.save(category);
     }
 
     @Transactional
-    public Category updateCategory(Long categoryId, String name, String description, Long parentCategoryId) {
-        Category category = getCategory(categoryId);
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Category name cannot be empty.");
+    public Category patchCategory(Long categoryId, Category category) {
+        Category existing = getCategory(categoryId);
+
+
+        validateParent(category.getParentCategoryId(), categoryId);
+
+        if (category.getName() != null){
+            existing.setName(category.getName());
         }
-        validateParent(parentCategoryId, categoryId);
-        category.setName(name);
-        category.setDescription(description);
-        category.setParentCategoryId(parentCategoryId);
-        return categoryRepository.save(category);
+        if (category.getDescription() != null){
+            existing.setDescription(category.getDescription());
+        }
+        if (category.getParentCategoryId() != null){
+            existing.setParentCategory(category.getParentCategory());
+        }
+
+        return categoryRepository.save(existing);
     }
 
     public Category getCategory(Long categoryId) {
@@ -46,7 +54,7 @@ public class CategoryService {
     }
 
     public List<Category> getRootCategories() {
-        return categoryRepository.findByParentCategoryId(null);
+        return categoryRepository.findRootCategories();
     }
 
     public List<Category> getChildren(Long parentCategoryId) {
@@ -54,17 +62,6 @@ public class CategoryService {
             getCategory(parentCategoryId);
         }
         return categoryRepository.findByParentCategoryId(parentCategoryId);
-    }
-
-    public List<CategoryNode> getCategoryTree() {
-        List<Category> categories = categoryRepository.findAll();
-        List<CategoryNode> roots = new ArrayList<>();
-        for (Category category : categories) {
-            if (category.getParentCategoryId() == null) {
-                roots.add(toNode(category, categories, new HashSet<>()));
-            }
-        }
-        return List.copyOf(roots);
     }
 
     @Transactional
@@ -88,15 +85,6 @@ public class CategoryService {
         return new CategoryNode(category, children);
     }
 
-    private void validateCategory(Category category) {
-        if (category == null) {
-            throw new IllegalArgumentException("Category cannot be null.");
-        }
-        if (category.getName() == null || category.getName().isBlank()) {
-            throw new IllegalArgumentException("Category name cannot be empty.");
-        }
-    }
-
     private void validateParent(Long parentCategoryId, Long categoryId) {
         if (parentCategoryId == null) {
             return;
@@ -106,15 +94,14 @@ public class CategoryService {
         Category current = parent;
         while (current != null) {
             if (!visited.add(current.getId())) {
-                throw new IllegalStateException("Existing category hierarchy contains a cycle.");
+                throw new EntityExistsException("Existing category hierarchy contains a cycle.");
             }
             if (current.getId().equals(categoryId)) {
                 throw new IllegalArgumentException("A category cannot be its own descendant.");
             }
             current = current.getParentCategoryId() == null
                     ? null
-                    : categoryRepository.findById(current.getParentCategoryId()).orElseThrow(
-                            () -> new IllegalStateException("Parent category does not exist."));
+                    : getCategory(current.getParentCategoryId());
         }
     }
 

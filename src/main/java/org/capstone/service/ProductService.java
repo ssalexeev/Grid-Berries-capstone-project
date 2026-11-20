@@ -1,20 +1,23 @@
 package org.capstone.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.Category;
 import org.capstone.domain.Product;
 import org.capstone.domain.SellerProfile;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.domain.enums.Role;
+import org.capstone.service.search.ProductSearchCriteria;
 import org.capstone.repository.jpa.CategoryRepository;
 import org.capstone.repository.jpa.ProductRepository;
-import org.capstone.repository.jpa.SellerProfileRepository;
+import org.capstone.service.search.ProductSpecifications;
+import org.capstone.util.mapper.product.ProductMapper;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -23,43 +26,85 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
-    private final SellerProfileRepository sellerProfileRepository;
     private final CategoryRepository categoryRepository;
+    private final SellerProfileService sellerProfileService;
+    private final ProductMapper productMapper;
+
+
+    public Slice<Product> getProductsSlice(ProductSearchCriteria criteria, Pageable pageable) {
+        Specification<Product> specification = ProductSpecifications.withFilters(criteria);
+
+        return productRepository.findBy(specification, q -> q
+                .as(Product.class)
+                .sortBy(pageable.getSort())
+                .slice(pageable)
+        );
+    }
 
     @Transactional
     public Product createProduct(Long sellerProfileId, Product product) {
-        validateProduct(product);
-        SellerProfile seller = getSellerProfile(sellerProfileId);
-
-        product.setId(null);
+        SellerProfile seller = sellerProfileService.getProfileById(sellerProfileId);
         product.setSellerProfile(seller);
-        product.setStatus(ProductStatus.PENDING_MODERATION);
-        Set<Category> categories = getCategories(product);
-        product.setCategories(categories);
 
         return productRepository.save(product);
     }
 
     @Transactional
-    public Product updateProduct(Long sellerProfileId, Product changes) {
+    public Product updateProduct(Long sellerProfileId, Long productId, Product changes) {
         if (changes == null || changes.getId() == null) {
             throw new IllegalArgumentException("Product and product ID are required.");
         }
-        Product existing = getProductById(changes.getId());
+        Product existing = getProductById(productId);
         requireSellerOwnership(existing, sellerProfileId);
-        validateProduct(changes);
 
         existing.setTitle(changes.getTitle());
         existing.setDescription(changes.getDescription());
         existing.setPrice(changes.getPrice());
         existing.setStockQuantity(changes.getStockQuantity());
         existing.setImageUrl(changes.getImageUrl());
-        Set<Category> categories = getCategories(changes);
-        existing.setCategories(categories);
+        existing.setCategories(changes.getCategories());
 
         return productRepository.save(existing);
     }
 
+    @Transactional
+    public Product patchProduct(Long productId, Product patchProduct) {
+        Product existing = getProductById(productId);
+
+        productMapper.updateEntity(existing, patchProduct);
+
+        if (patchProduct.getCategories() != null) {
+            syncCategories(existing, patchProduct.getCategories());
+        }
+
+        return productRepository.save(existing);
+    }
+
+    private void syncCategories(Product existing, Set<Category> incomingCategories) {
+        Set<Long> targetIds = incomingCategories.stream()
+                .map(Category::getId)
+                .collect(Collectors.toSet());
+
+        List<Category> foundCategories = categoryRepository.findAllById(targetIds);
+        if (foundCategories.size() != targetIds.size()) {
+            throw new EntityNotFoundException("One or more category IDs are invalid");
+        }
+
+        Set<Category> targetCategories = new HashSet<>(foundCategories);
+
+        for (Category current : new HashSet<>(existing.getCategories())) {
+            if (!targetCategories.contains(current)) {
+                existing.removeCategory(current);
+            }
+        }
+
+        for (Category target : targetCategories) {
+            if (!existing.getCategories().contains(target)) {
+                existing.addCategory(target);
+            }
+        }
+
+    }
 
     public Product getProductById(Long productId) {
         if (productId == null) {
@@ -76,43 +121,11 @@ public class ProductService {
         return product;
     }
 
+
     public List<Product> getProductsBySeller(Long sellerProfileId) {
-        getSellerProfile(sellerProfileId);
         return productRepository.findAllBySellerProfileId(sellerProfileId);
     }
 
-    public List<Product> searchProducts(
-            String keyword,
-            Long categoryId,
-            BigDecimal minimumPrice,
-            BigDecimal maximumPrice,
-            boolean availableOnly,
-            Long userId) {
-        validatePriceRange(minimumPrice, maximumPrice);
-        if (categoryId != null && categoryRepository.findById(categoryId).isEmpty()) {
-            throw new IllegalArgumentException("Category not found with ID: " + categoryId);
-        }
-        String normalizedKeyword = keyword == null ? null : keyword.trim().toLowerCase();
-        return productRepository.findAll().stream()
-                .filter(product -> product.getStatus() == ProductStatus.ACTIVE)
-                .filter(product -> matchesKeyword(product, normalizedKeyword))
-                .filter(product -> matchesCategory(product, categoryId))
-                .filter(product -> minimumPrice == null || product.getPrice().compareTo(minimumPrice) >= 0)
-                .filter(product -> maximumPrice == null || product.getPrice().compareTo(maximumPrice) <= 0)
-                .filter(product -> !availableOnly
-                        || product.getStockQuantity() != null && product.getStockQuantity() > 0)
-                .sorted(Comparator.comparing(Product::getId))
-                .toList();
-    }
-
-    public List<Product> searchProducts(
-            String keyword,
-            Long categoryId,
-            BigDecimal minimumPrice,
-            BigDecimal maximumPrice,
-            boolean availableOnly) {
-        return searchProducts(keyword, categoryId, minimumPrice, maximumPrice, availableOnly, null);
-    }
 
     @Transactional
     public void deleteProduct(Long sellerProfileId, Long productId) {
@@ -122,7 +135,7 @@ public class ProductService {
     }
 
     @Transactional
-    public Product moderateProduct(Long productId, ProductStatus status) {
+    public Product moderateProductStatus(Long productId, ProductStatus status) {
         if (status != ProductStatus.ACTIVE && status != ProductStatus.SUSPENDED) {
             throw new IllegalArgumentException("Moderated products must be approved or suspended.");
         }
@@ -142,62 +155,8 @@ public class ProductService {
         }
     }
 
-    private void validateProduct(Product product) {
-        if (product == null) {
-            throw new IllegalArgumentException("Product cannot be null.");
-        }
-        if (product.getTitle() == null || product.getTitle().isBlank()) {
-            throw new IllegalArgumentException("Product title cannot be empty.");
-        }
-        if (product.getPrice() == null || product.getPrice().signum() < 0) {
-            throw new IllegalArgumentException("Product price must be zero or greater.");
-        }
-        if (product.getStockQuantity() == null || product.getStockQuantity() < 0) {
-            throw new IllegalArgumentException("Product stock cannot be negative or null.");
-        }
-    }
-
-    private SellerProfile getSellerProfile(Long sellerProfileId) {
-        if (sellerProfileId == null) {
-            throw new IllegalArgumentException("Seller profile ID cannot be null.");
-        }
-        SellerProfile seller = sellerProfileRepository.findById(sellerProfileId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Seller profile not found with ID: " + sellerProfileId));
-        if (seller.getUser() == null
-                || seller.getUser().getRole() != Role.SELLER
-                || !Boolean.TRUE.equals(seller.getUser().getIsActive())) {
-            throw new IllegalStateException("Only active seller accounts can manage products.");
-        }
-        return seller;
-    }
-
-    private Category getCategory(Category category) {
-        if (category == null) {
-            return null;
-        }
-        if (category.getId() == null) {
-            throw new IllegalArgumentException("Category ID is required.");
-        }
-        return categoryRepository.findById(category.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Category not found with ID: " + category.getId()));
-    }
-
-    private Set<Category> getCategories(Product product) {
-        Set<Category> requested = product.getCategories();
-        if (requested == null || requested.isEmpty()) {
-            return Set.of();
-        }
-        return requested.stream()
-                .map(this::getCategory)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
     private void requireSellerOwnership(Product product, Long sellerProfileId) {
-        getSellerProfile(sellerProfileId);
-        if (product.getSellerProfile() == null
-                || !sellerProfileId.equals(product.getSellerProfile().getId())) {
+        if (product.getSellerProfile() == null || !sellerProfileId.equals(product.getSellerProfile().getId())) {
             throw new IllegalStateException("Product does not belong to this seller.");
         }
     }
@@ -205,16 +164,6 @@ public class ProductService {
     private void requireActive(Product product) {
         if (product.getStatus() != ProductStatus.ACTIVE) {
             throw new IllegalStateException("Product is not available in the catalog.");
-        }
-    }
-
-    private void validatePriceRange(BigDecimal minimumPrice, BigDecimal maximumPrice) {
-        if (minimumPrice != null && minimumPrice.signum() < 0
-                || maximumPrice != null && maximumPrice.signum() < 0) {
-            throw new IllegalArgumentException("Price filters cannot be negative.");
-        }
-        if (minimumPrice != null && maximumPrice != null && minimumPrice.compareTo(maximumPrice) > 0) {
-            throw new IllegalArgumentException("Minimum price cannot exceed maximum price.");
         }
     }
 
@@ -240,4 +189,6 @@ public class ProductService {
         }
         return false;
     }
+
+
 }

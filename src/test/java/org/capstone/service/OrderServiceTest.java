@@ -1,7 +1,5 @@
 package org.capstone.service;
 
-import org.capstone.domain.Cart;
-import org.capstone.domain.CartItem;
 import org.capstone.domain.Order;
 import org.capstone.domain.OrderItem;
 import org.capstone.domain.Product;
@@ -9,7 +7,6 @@ import org.capstone.domain.SellerProfile;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.OrderStatus;
 import org.capstone.domain.enums.ProductStatus;
-import org.capstone.repository.jpa.CartRepository;
 import org.capstone.repository.jpa.OrderRepository;
 import org.capstone.repository.jpa.ProductRepository;
 import org.capstone.repository.jpa.SellerProfileRepository;
@@ -28,14 +25,14 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
     @Mock
     private OrderRepository orderRepository;
-    @Mock
-    private CartRepository cartRepository;
     @Mock
     private ProductRepository productRepository;
     @Mock
@@ -47,30 +44,46 @@ class OrderServiceTest {
     private OrderService orderService;
 
     @Test
-    void placeOrderReservesStockSnapshotsPriceAndClearsCart() {
+    void placeOrderReservesStockAndSnapshotsPrice() {
         User user = User.builder().id(1L).build();
         Product product = product();
-        Cart cart = Cart.builder().id(2L).user(user).cartItems(new ArrayList<>(List.of(
-                CartItem.builder().cart(Cart.builder().id(2L).build()).product(product).quantity(2).build())))
+        Order requestedOrder = Order.builder().items(new ArrayList<>(List.of(
+                OrderItem.builder()
+                        .product(Product.builder().id(4L).build())
+                        .quantity(2)
+                        .build())))
                 .build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
         when(productRepository.findById(4L)).thenReturn(Optional.of(product));
-        //when(productRepository.reserveStock(4L, 2)).thenReturn(true);
+        when(productRepository.reserveStockIfAvailable(4L, 2)).thenReturn(1);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);
             order.setId(7L);
             order.getItems().get(0).setId(9L);
             return order;
         });
-        when(cartRepository.save(any(Cart.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Order order = orderService.placeOrder(1L);
+        Order order = orderService.placeOrder(user, requestedOrder);
 
         assertEquals(OrderStatus.CREATED, order.getStatus());
         assertEquals(new BigDecimal("15.00"), order.getTotalAmount());
-        assertEquals(0, cart.getCartItems().size());
-       // verify(productRepository).reserveStock(4L, 2);
+        assertEquals(order, order.getItems().get(0).getOrder());
+        verify(productRepository).reserveStockIfAvailable(4L, 2);
+    }
+
+    @Test
+    void placeOrderRejectsInsufficientStock() {
+        User user = User.builder().id(1L).build();
+        Order requestedOrder = Order.builder().items(List.of(
+                OrderItem.builder()
+                        .product(Product.builder().id(4L).build())
+                        .quantity(2)
+                        .build()))
+                .build();
+        when(productRepository.findById(4L)).thenReturn(Optional.of(product()));
+        when(productRepository.reserveStockIfAvailable(4L, 2)).thenReturn(0);
+
+        assertThrows(IllegalStateException.class, () -> orderService.placeOrder(user, requestedOrder));
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test

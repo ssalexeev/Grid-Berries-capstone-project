@@ -1,0 +1,18 @@
+$kind: http-request
+name: Update Order Status
+method: PATCH
+url: '{{base_url}}/api/v1/orders/orders/{{orderId}}?status=IN_PROCESSING'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{access_token}}'
+pathVariables:
+  - key: orderId
+    value: '1'
+    description: 'Order ID'
+queryParams:
+  - key: status
+    value: 'IN_PROCESSING'
+    description: 'Requested order status: CREATED, IN_PROCESSING, SHIPPED, COMPLETED, CANCELLED'
+order: 4000

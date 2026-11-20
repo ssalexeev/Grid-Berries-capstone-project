@@ -12,6 +12,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,7 +37,8 @@ import java.util.List;
 @Table(name = "\"order\"")
 public class Order {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "orderSeqGen")
+    @SequenceGenerator(name = "orderSeqGen", sequenceName = "order_id_seq")
     private Long id;
 
     @Column(name = "status", nullable = false, length = 50)
@@ -45,9 +49,8 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
     @Builder.Default
     @Column(name = "updated_at", nullable = false)
@@ -64,6 +67,16 @@ public class Order {
             orphanRemoval = true
     )
     private List<OrderItem> items = new ArrayList<>();
+
+    @PrePersist
+    public void onPersist(){
+        this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public  void onUpdate(){
+        this.updatedAt = LocalDateTime.now();
+    }
 
     public void updateStatus(OrderStatus status) {
         this.status = status;

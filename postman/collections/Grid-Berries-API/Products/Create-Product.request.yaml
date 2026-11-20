@@ -1,0 +1,21 @@
+$kind: http-request
+name: Create Product
+method: POST
+url: "{{base_url}}/api/v1/products"
+auth:
+  type: bearer
+  credentials:
+    token: "{{access_token}}"
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Sample Berry Box",
+      "description": "A fresh assortment of berries",
+      "price": 19.99,
+      "stockQuantity": 100,
+      "imageUrl": "https://example.com/image.jpg",
+      "categoryIds": [251]
+    }

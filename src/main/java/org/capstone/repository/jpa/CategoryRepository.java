@@ -7,9 +7,21 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
+
+@Repository
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
+
     @Query("""
+            select c 
+            from Category c
+            where c.parentCategory is null                
+            """)
+    List<Category> findRootCategories();
+
+    @Query("""
+            
             select category
             from Category category
             where (:parentCategoryId is null and category.parentCategory is null)
@@ -25,4 +37,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
             order by category.id
             """)
     List<Category> findByProductId(@Param("productId") Long productId);
+
+
+    Set<Category> findAllById(Long id);
 }

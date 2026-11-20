@@ -1,42 +1,30 @@
 package org.capstone.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.capstone.domain.User;
 import org.capstone.domain.enums.Role;
 import org.capstone.repository.jpa.UserRepository;
+import org.capstone.util.exception.UserAlreadyExistsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
-
     private final UserRepository userRepository;
 
-    public User registerUser(String email, String passwordHash, Role role) {
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Email cannot be empty.");
-        }
-        if (passwordHash == null || passwordHash.isBlank()) {
-            throw new IllegalArgumentException("Password cannot be empty.");
-        }
-
-        // Check for duplicate email across all existing users
-        boolean emailExists = userRepository.findAll().stream()
-                .anyMatch(u -> email.equalsIgnoreCase(u.getEmail()));
+    //todo: add email index and optimize query
+    @Transactional
+    public User registerUser(User user) {
+        boolean emailExists = userRepository.existsByEmailIgnoreCase(user.getEmail());
         if (emailExists) {
-            throw new IllegalStateException("User with email " + email + " already exists.");
+            throw new UserAlreadyExistsException("User with email " + user.getEmail() + " already exists.");
         }
 
-        User user = User.builder()
-                .email(email)
-                .passwordHash(passwordHash)
-                .role(role != null ? role : Role.BUYER)
-                .isActive(true)
-                .createdAt(LocalDateTime.now())
-                .build();
 
         return userRepository.save(user);
     }
@@ -58,7 +46,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + id));
     }
 
-    public User getUserByEmail(String email){
+    public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
     }
@@ -79,10 +67,31 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public void deactivateUser(Long id) {
-        User user = getUserById(id);
-        user.setIsActive(false);
-        userRepository.save(user);
+    @Transactional
+    public User patchUser(Long userId, User user) {
+        User existing = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+
+        if (user.getEmail() != null && !user.getEmail().equalsIgnoreCase(existing.getEmail())) {
+            if (userRepository.existsByEmail(user.getEmail())) {
+                throw new IllegalArgumentException("Email is already in use: " + user.getEmail());
+            }
+            existing.setEmail(user.getEmail().trim());
+        }
+
+        if (user.getIsActive() != null) {
+            existing.setIsActive(user.getIsActive());
+        }
+
+        if (user.getPasswordHash() != null){
+            existing.setPasswordHash(user.getPasswordHash());
+        }
+
+        if (user.getRole() != null) {
+            existing.setRole(user.getRole());
+        }
+
+        return userRepository.save(existing);
     }
 
     public void deleteUser(Long id) {
@@ -92,5 +101,10 @@ public class UserService {
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
+    }
+
+    public User getByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("User by email:" + email + "not found"));
     }
 }
